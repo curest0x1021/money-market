@@ -1,7 +1,7 @@
 use cosmwasm_bignumber::Uint256;
-use cosmwasm_std::{CanonicalAddr, Deps, StdError, StdResult};
+use cosmwasm_std::{Addr, Deps, StdError, StdResult};
 
-pub type Token = (CanonicalAddr, Uint256);
+pub type Token = (Addr, Uint256);
 pub type TokenHuman = (String, Uint256);
 
 pub type Tokens = Vec<Token>;
@@ -23,11 +23,11 @@ pub trait TokensToRaw {
 
 impl TokensMath for Tokens {
     fn sub(&mut self, tokens: Tokens) -> StdResult<()> {
-        self.sort_by(|a, b| a.0.as_slice().cmp(b.0.as_slice()));
+        self.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
         self.assert_duplicate_token();
 
         let mut tokens = tokens;
-        tokens.sort_by(|a, b| a.0.as_slice().cmp(b.0.as_slice()));
+        tokens.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
         tokens.assert_duplicate_token();
 
         let mut i = 0;
@@ -42,7 +42,7 @@ impl TokensMath for Tokens {
 
                 i += 1;
                 j += 1;
-            } else if self[i].0.as_slice().cmp(tokens[j].0.as_slice()) == std::cmp::Ordering::Less {
+            } else if self[i].0.as_bytes().cmp(tokens[j].0.as_bytes()) == std::cmp::Ordering::Less {
                 i += 1;
             } else {
                 return Err(StdError::generic_err("Subtraction underflow"));
@@ -60,11 +60,11 @@ impl TokensMath for Tokens {
     }
 
     fn add(&mut self, tokens: Tokens) {
-        self.sort_by(|a, b| a.0.as_slice().cmp(b.0.as_slice()));
+        self.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
         self.assert_duplicate_token();
 
         let mut tokens = tokens;
-        tokens.sort_by(|a, b| a.0.as_slice().cmp(b.0.as_slice()));
+        tokens.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
         tokens.assert_duplicate_token();
 
         let mut tmp_tokens: Tokens = vec![];
@@ -77,7 +77,7 @@ impl TokensMath for Tokens {
 
                 i += 1;
                 j += 1;
-            } else if self[i].0.as_slice().cmp(tokens[j].0.as_slice())
+            } else if self[i].0.as_bytes().cmp(tokens[j].0.as_bytes())
                 == std::cmp::Ordering::Greater
             {
                 tmp_tokens.push((tokens[j].0.clone(), tokens[j].1));
@@ -109,11 +109,11 @@ impl TokensMath for Tokens {
 
     fn assert_duplicate_token(&self) {
         if self.len() > 1 {
-            let mut before_token = self[0].0.as_slice();
+            let mut before_token = self[0].0.as_bytes();
 
             let mut i = 1;
             while i < self.len() {
-                let next_token = self[i].0.as_slice();
+                let next_token = self[i].0.as_bytes();
                 if before_token == next_token {
                     panic!("duplicate token address");
                 }
@@ -129,7 +129,7 @@ impl TokensToHuman for Tokens {
     fn to_human(&self, deps: Deps) -> StdResult<TokensHuman> {
         let collaterals: TokensHuman = self
             .iter()
-            .map(|c| Ok((deps.api.addr_humanize(&c.0)?.to_string(), c.1)))
+            .map(|c| Ok((c.0.to_string(), c.1)))
             .collect::<StdResult<TokensHuman>>()?;
         Ok(collaterals)
     }
@@ -139,7 +139,7 @@ impl TokensToRaw for TokensHuman {
     fn to_raw(&self, deps: Deps) -> StdResult<Tokens> {
         let collaterals: Tokens = self
             .iter()
-            .map(|c| Ok((deps.api.addr_canonicalize(c.0.as_str())?, c.1)))
+            .map(|c| Ok((deps.api.addr_validate(c.0.as_str())?, c.1)))
             .collect::<StdResult<Tokens>>()?;
         Ok(collaterals)
     }

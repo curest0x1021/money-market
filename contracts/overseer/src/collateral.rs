@@ -24,7 +24,7 @@ pub fn lock_collateral(
     info: MessageInfo,
     collaterals_human: TokensHuman,
 ) -> Result<Response, ContractError> {
-    let borrower_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
+    let borrower_raw = info.sender.clone();
     let mut cur_collaterals: Tokens = read_collaterals(deps.storage, &borrower_raw);
 
     let collaterals: Tokens = collaterals_human.to_raw(deps.as_ref())?;
@@ -36,10 +36,7 @@ pub fn lock_collateral(
     for collateral in collaterals {
         let whitelist_elem: WhitelistElem = read_whitelist_elem(deps.storage, &collateral.0)?;
         messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps
-                .api
-                .addr_humanize(&whitelist_elem.custody_contract)?
-                .to_string(),
+            contract_addr: whitelist_elem.custody_contract.to_string(),
             funds: vec![],
             msg: to_binary(&CustodyExecuteMsg::LockCollateral {
                 borrower: info.sender.to_string(),
@@ -68,11 +65,9 @@ pub fn unlock_collateral(
     collaterals_human: TokensHuman,
 ) -> Result<Response, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    let market = deps.api.addr_humanize(&config.market_contract)?;
 
     let borrower = info.sender;
-    let borrower_raw = deps.api.addr_canonicalize(borrower.as_str())?;
-    let mut cur_collaterals: Tokens = read_collaterals(deps.storage, &borrower_raw);
+    let mut cur_collaterals: Tokens = read_collaterals(deps.storage, &borrower);
     let collaterals: Tokens = collaterals_human.to_raw(deps.as_ref())?;
 
     // Underflow check is done in sub_collateral
@@ -87,21 +82,18 @@ pub fn unlock_collateral(
         Some(env.block.time.seconds()),
     )?;
     let borrow_amount_res: BorrowerInfoResponse =
-        query_borrower_info(deps.as_ref(), market, borrower.clone(), env.block.height)?;
+        query_borrower_info(deps.as_ref(), config.market_contract, borrower.clone(), env.block.height)?;
     if borrow_limit < borrow_amount_res.loan_amount {
         return Err(ContractError::UnlockTooLarge(borrow_limit.into()));
     }
 
-    store_collaterals(deps.storage, &borrower_raw, &cur_collaterals)?;
+    store_collaterals(deps.storage, &borrower, &cur_collaterals)?;
 
     let mut messages: Vec<SubMsg> = vec![];
     for collateral in collaterals.clone() {
         let whitelist_elem: WhitelistElem = read_whitelist_elem(deps.storage, &collateral.0)?;
         messages.push(SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps
-                .api
-                .addr_humanize(&whitelist_elem.custody_contract)?
-                .to_string(),
+            contract_addr: whitelist_elem.custody_contract.to_string(),
             funds: vec![],
             msg: to_binary(&CustodyExecuteMsg::UnlockCollateral {
                 borrower: borrower.to_string(),
@@ -132,10 +124,8 @@ pub fn liquidate_collateral(
     borrower: Addr,
 ) -> Result<Response, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    let market = deps.api.addr_humanize(&config.market_contract)?;
 
-    let borrower_raw = deps.api.addr_canonicalize(borrower.as_str())?;
-    let mut cur_collaterals: Tokens = read_collaterals(deps.storage, &borrower_raw);
+    let mut cur_collaterals: Tokens = read_collaterals(deps.storage, &borrower);
 
     // Compute borrow limit with collaterals except unlock target collaterals
     let (borrow_limit, collateral_prices) = compute_borrow_limit(
@@ -144,7 +134,7 @@ pub fn liquidate_collateral(
         Some(env.block.time.seconds()),
     )?;
     let borrow_amount_res: BorrowerInfoResponse =
-        query_borrower_info(deps.as_ref(), market, borrower.clone(), env.block.height)?;
+        query_borrower_info(deps.as_ref(), config.market_contract.clone(), borrower.clone(), env.block.height)?;
     let borrow_amount = borrow_amount_res.loan_amount;
 
     // borrow limit is equal or bigger than loan amount
@@ -155,7 +145,7 @@ pub fn liquidate_collateral(
 
     let liquidation_amount_res: LiquidationAmountResponse = query_liquidation_amount(
         deps.as_ref(),
-        deps.api.addr_humanize(&config.liquidation_contract)?,
+        config.liquidation_contract,
         borrow_amount,
         borrow_limit,
         &cur_collaterals.to_human(deps.as_ref())?,
@@ -166,11 +156,10 @@ pub fn liquidate_collateral(
 
     // Store left collaterals
     cur_collaterals.sub(liquidation_amount.clone())?;
-    store_collaterals(deps.storage, &borrower_raw, &cur_collaterals)?;
+    store_collaterals(deps.storage, &borrower, &cur_collaterals)?;
 
-    let market_contract = deps.api.addr_humanize(&config.market_contract)?;
     let prev_balance: Uint256 =
-        query_balance(deps.as_ref(), market_contract.clone(), config.stable_denom)?;
+        query_balance(deps.as_ref(), config.market_contract.clone(), config.stable_denom)?;
 
     let liquidation_messages: Vec<CosmosMsg> = liquidation_amount
         .iter()
@@ -178,10 +167,7 @@ pub fn liquidate_collateral(
             let whitelist_elem: WhitelistElem = read_whitelist_elem(deps.storage, &collateral.0)?;
 
             Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: deps
-                    .api
-                    .addr_humanize(&whitelist_elem.custody_contract)?
-                    .to_string(),
+                contract_addr: whitelist_elem.custody_contract.to_string(),
                 funds: vec![],
                 msg: to_binary(&CustodyExecuteMsg::LiquidateCollateral {
                     liquidator: info.sender.to_string(),
@@ -196,7 +182,7 @@ pub fn liquidate_collateral(
     Ok(Response::new()
         .add_messages(liquidation_messages)
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: market_contract.to_string(),
+            contract_addr: config.market_contract.to_string(),
             funds: vec![],
             msg: to_binary(&MarketExecuteMsg::RepayStableFromLiquidation {
                 borrower: borrower.to_string(),
@@ -208,14 +194,14 @@ pub fn liquidate_collateral(
 pub fn query_collaterals(deps: Deps, borrower: Addr) -> StdResult<CollateralsResponse> {
     let collaterals: Tokens = read_collaterals(
         deps.storage,
-        &deps.api.addr_canonicalize(borrower.as_str())?,
+        &borrower,
     );
 
     Ok(CollateralsResponse {
         borrower: borrower.to_string(),
         collaterals: collaterals
             .iter()
-            .map(|c| Ok((deps.api.addr_humanize(&c.0)?.to_string(), c.1)))
+            .map(|c| Ok((c.0.to_string(), c.1)))
             .collect::<StdResult<Vec<(String, Uint256)>>>()?,
     })
 }
@@ -225,12 +211,6 @@ pub fn query_all_collaterals(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<AllCollateralsResponse> {
-    let start_after = if let Some(start_after) = start_after {
-        Some(deps.api.addr_canonicalize(start_after.as_str())?)
-    } else {
-        None
-    };
-
     let all_collaterals: Vec<CollateralsResponse> = read_all_collaterals(deps, start_after, limit)?;
 
     Ok(AllCollateralsResponse { all_collaterals })
@@ -243,7 +223,6 @@ pub(crate) fn compute_borrow_limit(
     block_time: Option<u64>,
 ) -> StdResult<(Uint256, Vec<Decimal256>)> {
     let config: Config = read_config(deps.storage)?;
-    let oracle_contract = deps.api.addr_humanize(&config.oracle_contract)?;
 
     let mut borrow_limit: Uint256 = Uint256::zero();
     let mut collateral_prices: Vec<Decimal256> = vec![];
@@ -253,8 +232,8 @@ pub(crate) fn compute_borrow_limit(
 
         let price: PriceResponse = query_price(
             deps,
-            oracle_contract.clone(),
-            (deps.api.addr_humanize(&collateral_token)?).to_string(),
+            config.oracle_contract.clone(),
+            collateral_token.to_string(),
             config.stable_denom.to_string(),
             block_time.map(|block_time| TimeConstraints {
                 block_time,
@@ -279,7 +258,7 @@ pub fn query_borrow_limit(
 ) -> StdResult<BorrowLimitResponse> {
     let collaterals = read_collaterals(
         deps.storage,
-        &deps.api.addr_canonicalize(borrower.as_str())?,
+        &borrower,
     );
 
     // Compute borrow limit with collaterals

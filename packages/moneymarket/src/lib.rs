@@ -13,5 +13,3 @@ pub mod tokens;
 #[cfg(test)]
 mod mock_querier;
 
-#[cfg(test)]
-mod testing;
