@@ -29,12 +29,12 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let config = Config {
-        owner: deps.api.addr_canonicalize(&msg.owner)?,
-        overseer_contract: deps.api.addr_canonicalize(&msg.overseer_contract)?,
-        collateral_token: deps.api.addr_canonicalize(&msg.collateral_token)?,
-        market_contract: deps.api.addr_canonicalize(&msg.market_contract)?,
-        reward_contract: deps.api.addr_canonicalize(&msg.reward_contract)?,
-        liquidation_contract: deps.api.addr_canonicalize(&msg.liquidation_contract)?,
+        owner: deps.api.addr_validate(&msg.owner)?,
+        overseer_contract: deps.api.addr_validate(&msg.overseer_contract)?,
+        collateral_token: deps.api.addr_validate(&msg.collateral_token)?,
+        market_contract: deps.api.addr_validate(&msg.market_contract)?,
+        reward_contract: deps.api.addr_validate(&msg.reward_contract)?,
+        liquidation_contract: deps.api.addr_validate(&msg.liquidation_contract)?,
         stable_denom: msg.stable_denom,
         basset_info: msg.basset_info,
     };
@@ -107,13 +107,11 @@ pub fn receive_cw20(
     info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
-    let contract_addr = info.sender;
-
     match from_binary(&cw20_msg.msg) {
         Ok(Cw20HookMsg::DepositCollateral {}) => {
             // only asset contract can execute this message
             let config: Config = read_config(deps.storage)?;
-            if deps.api.addr_canonicalize(contract_addr.as_str())? != config.collateral_token {
+            if info.sender != config.collateral_token {
                 return Err(ContractError::Unauthorized {});
             }
 
@@ -132,16 +130,16 @@ pub fn update_config(
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
     let mut config: Config = read_config(deps.storage)?;
 
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+    if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
 
     if let Some(owner) = owner {
-        config.owner = deps.api.addr_canonicalize(owner.as_str())?;
+        config.owner = owner;
     }
 
     if let Some(liquidation_contract) = liquidation_contract {
-        config.liquidation_contract = deps.api.addr_canonicalize(liquidation_contract.as_str())?;
+        config.liquidation_contract = liquidation_contract;
     }
 
     store_config(deps.storage, &config)?;
@@ -167,21 +165,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config: Config = read_config(deps.storage)?;
     Ok(ConfigResponse {
-        owner: deps.api.addr_humanize(&config.owner)?.to_string(),
-        collateral_token: deps
-            .api
-            .addr_humanize(&config.collateral_token)?
-            .to_string(),
-        overseer_contract: deps
-            .api
-            .addr_humanize(&config.overseer_contract)?
-            .to_string(),
-        market_contract: deps.api.addr_humanize(&config.market_contract)?.to_string(),
-        reward_contract: deps.api.addr_humanize(&config.reward_contract)?.to_string(),
-        liquidation_contract: deps
-            .api
-            .addr_humanize(&config.liquidation_contract)?
-            .to_string(),
+        owner: config.owner.to_string(),
+        collateral_token: config.collateral_token.to_string(),
+        overseer_contract: config.overseer_contract.to_string(),
+        market_contract: config.market_contract.to_string(),
+        reward_contract: config.reward_contract.to_string(),
+        liquidation_contract: config.liquidation_contract.to_string(),
         stable_denom: config.stable_denom,
         basset_info: config.basset_info,
     })
