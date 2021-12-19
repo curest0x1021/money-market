@@ -29,8 +29,8 @@ pub fn instantiate(
     store_config(
         deps.storage,
         &Config {
-            owner: deps.api.addr_canonicalize(&msg.owner)?,
-            oracle_contract: deps.api.addr_canonicalize(&msg.oracle_contract)?,
+            owner: deps.api.addr_validate(&msg.owner)?,
+            oracle_contract: deps.api.addr_validate(&msg.oracle_contract)?,
             stable_denom: msg.stable_denom,
             safe_ratio: msg.safe_ratio,
             bid_fee: msg.bid_fee,
@@ -145,16 +145,16 @@ pub fn update_config(
     price_timeframe: Option<u64>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = read_config(deps.storage)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+    if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
 
     if let Some(owner) = owner {
-        config.owner = deps.api.addr_canonicalize(&owner.to_string())?;
+        config.owner = owner;
     }
 
     if let Some(oracle_contract) = oracle_contract {
-        config.oracle_contract = deps.api.addr_canonicalize(&oracle_contract.to_string())?;
+        config.oracle_contract = oracle_contract;
     }
 
     if let Some(stable_denom) = stable_denom {
@@ -243,8 +243,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = read_config(deps.storage)?;
     let resp = ConfigResponse {
-        owner: deps.api.addr_humanize(&config.owner)?.to_string(),
-        oracle_contract: deps.api.addr_humanize(&config.oracle_contract)?.to_string(),
+        owner: config.owner.to_string(),
+        oracle_contract: config.oracle_contract.to_string(),
         stable_denom: config.stable_denom,
         safe_ratio: config.safe_ratio,
         bid_fee: config.bid_fee,

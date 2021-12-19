@@ -20,9 +20,8 @@ pub fn submit_bid(
     collateral_token: Addr,
     premium_rate: Decimal256,
 ) -> Result<Response, ContractError> {
-    let collateral_token_raw = deps.api.addr_canonicalize(collateral_token.as_str())?;
-    let bidder_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
-    if read_bid(deps.storage, &bidder_raw, &collateral_token_raw).is_ok() {
+    let bidder = info.sender;
+    if read_bid(deps.storage, &bidder, &collateral_token).is_ok() {
         return Err(ContractError::AlreadyBidForCollateral(collateral_token));
     }
 
@@ -43,8 +42,8 @@ pub fn submit_bid(
 
     store_bid(
         deps.storage,
-        &bidder_raw,
-        &collateral_token_raw,
+        &bidder,
+        &collateral_token,
         Bid {
             amount,
             premium_rate,
@@ -65,9 +64,8 @@ pub fn retract_bid(
     amount: Option<Uint256>,
 ) -> Result<Response, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    let collateral_token_raw = deps.api.addr_canonicalize(collateral_token.as_str())?;
-    let bidder_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
-    let bid: Bid = read_bid(deps.storage, &bidder_raw, &collateral_token_raw)?;
+    let bidder = info.sender.clone();
+    let bid: Bid = read_bid(deps.storage, &bidder, &collateral_token)?;
 
     let amount = amount.unwrap_or(bid.amount);
     if amount > bid.amount {
@@ -75,12 +73,12 @@ pub fn retract_bid(
     }
 
     if amount == bid.amount {
-        remove_bid(deps.storage, &bidder_raw, &collateral_token_raw);
+        remove_bid(deps.storage, &bidder, &collateral_token);
     } else {
         store_bid(
             deps.storage,
-            &bidder_raw,
-            &collateral_token_raw,
+            &bidder,
+            &collateral_token,
             Bid {
                 amount: bid.amount - amount,
                 ..bid
@@ -117,11 +115,10 @@ pub fn execute_bid(
     amount: Uint256,
 ) -> Result<Response, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    let collateral_token_raw = deps.api.addr_canonicalize(collateral_token.as_str())?;
-    let bidder_raw = deps.api.addr_canonicalize(liquidator.as_str())?;
-    let bid: Bid = read_bid(deps.storage, &bidder_raw, &collateral_token_raw)?;
+    let bidder = liquidator.clone();
+    let bid: Bid = read_bid(deps.storage, &bidder, &collateral_token)?;
 
-    let oracle_contract = deps.api.addr_humanize(&config.oracle_contract)?;
+    let oracle_contract = config.oracle_contract;
     let price: PriceResponse = query_price(
         deps.as_ref(),
         oracle_contract,
@@ -144,12 +141,12 @@ pub fn execute_bid(
 
     // Update bid
     if bid.amount == required_stable {
-        remove_bid(deps.storage, &bidder_raw, &collateral_token_raw);
+        remove_bid(deps.storage, &bidder, &collateral_token);
     } else {
         store_bid(
             deps.storage,
-            &bidder_raw,
-            &collateral_token_raw,
+            &bidder,
+            &collateral_token,
             Bid {
                 amount: bid.amount - required_stable,
                 ..bid
@@ -207,8 +204,8 @@ pub fn execute_bid(
 pub fn query_bid(deps: Deps, collateral_token: Addr, bidder: Addr) -> StdResult<BidResponse> {
     let bid: Bid = read_bid(
         deps.storage,
-        &deps.api.addr_canonicalize(bidder.as_str())?,
-        &deps.api.addr_canonicalize(collateral_token.as_str())?,
+        &bidder,
+        &collateral_token,
     )?;
 
     Ok(BidResponse {
@@ -225,15 +222,9 @@ pub fn query_bids_by_user(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
-    let start_after = if let Some(start_after) = start_after {
-        Some(deps.api.addr_canonicalize(start_after.as_str())?)
-    } else {
-        None
-    };
-
     let bids: Vec<BidResponse> = read_bids_by_user(
         deps,
-        &deps.api.addr_canonicalize(bidder.as_str())?,
+        &bidder,
         start_after,
         limit,
     )?;
@@ -247,15 +238,9 @@ pub fn query_bids_by_collateral(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
-    let start_after = if let Some(start_after) = start_after {
-        Some(deps.api.addr_canonicalize(start_after.as_str())?)
-    } else {
-        None
-    };
-
     let bids: Vec<BidResponse> = read_bids_by_collateral(
         deps,
-        &deps.api.addr_canonicalize(collateral_token.as_str())?,
+        &collateral_token,
         start_after,
         limit,
     )?;
