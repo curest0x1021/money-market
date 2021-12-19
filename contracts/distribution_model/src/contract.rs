@@ -21,7 +21,7 @@ pub fn instantiate(
     store_config(
         deps.storage,
         &Config {
-            owner: deps.api.addr_canonicalize(&msg.owner)?,
+            owner: deps.api.addr_validate(&msg.owner)?,
             emission_cap: msg.emission_cap,
             emission_floor: msg.emission_floor,
             increment_multiplier: msg.increment_multiplier,
@@ -71,12 +71,12 @@ pub fn update_config(
     decrement_multiplier: Option<Decimal256>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = read_config(deps.storage)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+    if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
 
     if let Some(owner) = owner {
-        config.owner = deps.api.addr_canonicalize(owner.as_str())?;
+        config.owner = owner;
     }
 
     if let Some(emission_cap) = emission_cap {
@@ -121,7 +121,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = read_config(deps.storage)?;
     let resp = ConfigResponse {
-        owner: deps.api.addr_humanize(&state.owner)?.to_string(),
+        owner: state.owner.to_string(),
         emission_cap: state.emission_cap,
         emission_floor: state.emission_floor,
         increment_multiplier: state.increment_multiplier,
