@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_bignumber::Decimal256;
-use cosmwasm_std::{CanonicalAddr, Order, StdError, StdResult, Storage};
+use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage};
 use cosmwasm_storage::{singleton, singleton_read, Bucket, ReadonlyBucket};
 
 use moneymarket::oracle::PricesResponseElem;
@@ -14,7 +14,7 @@ static KEY_CONFIG: &[u8] = b"config";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    pub owner: CanonicalAddr,
+    pub owner: Addr,
     pub base_asset: String,
 }
 
@@ -80,14 +80,14 @@ pub fn read_prices(
 pub fn store_feeder(
     storage: &mut dyn Storage,
     asset: &str,
-    feeder: &CanonicalAddr,
+    feeder: &Addr,
 ) -> StdResult<()> {
-    let mut price_bucket: Bucket<CanonicalAddr> = Bucket::new(storage, PREFIX_FEEDER);
+    let mut price_bucket: Bucket<Addr> = Bucket::new(storage, PREFIX_FEEDER);
     price_bucket.save(asset.as_bytes(), feeder)
 }
 
-pub fn read_feeder(storage: &dyn Storage, asset: &str) -> StdResult<CanonicalAddr> {
-    let price_bucket: ReadonlyBucket<CanonicalAddr> = ReadonlyBucket::new(storage, PREFIX_FEEDER);
+pub fn read_feeder(storage: &dyn Storage, asset: &str) -> StdResult<Addr> {
+    let price_bucket: ReadonlyBucket<Addr> = ReadonlyBucket::new(storage, PREFIX_FEEDER);
     let res = price_bucket.load(asset.as_bytes());
     match res {
         Ok(data) => Ok(data),

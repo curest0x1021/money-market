@@ -22,7 +22,7 @@ pub fn instantiate(
     store_config(
         deps.storage,
         &Config {
-            owner: deps.api.addr_canonicalize(&msg.owner)?,
+            owner: deps.api.addr_validate(&msg.owner)?,
             base_asset: msg.base_asset,
         },
     )?;
@@ -50,12 +50,12 @@ pub fn update_config(
     owner: Option<String>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = read_config(deps.storage)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+    if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
 
     if let Some(owner) = owner {
-        config.owner = deps.api.addr_canonicalize(&owner)?;
+        config.owner = deps.api.addr_validate(&owner)?;
     }
 
     store_config(deps.storage, &config)?;
@@ -69,11 +69,11 @@ pub fn register_feeder(
     feeder: String,
 ) -> Result<Response, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+    if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
 
-    store_feeder(deps.storage, &asset, &deps.api.addr_canonicalize(&feeder)?)?;
+    store_feeder(deps.storage, &asset, &deps.api.addr_validate(&feeder)?)?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "register_feeder"),
@@ -89,7 +89,7 @@ pub fn feed_prices(
     prices: Vec<(String, Decimal256)>,
 ) -> Result<Response, ContractError> {
     let mut attributes = vec![attr("action", "feed_prices")];
-    let sender_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
+    let sender_raw = info.sender;
     for price in prices {
         let asset: String = price.0;
         let price: Decimal256 = price.1;
@@ -131,7 +131,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = read_config(deps.storage)?;
     let resp = ConfigResponse {
-        owner: deps.api.addr_humanize(&state.owner)?.to_string(),
+        owner: state.owner.to_string(),
         base_asset: state.base_asset,
     };
 
@@ -142,7 +142,7 @@ fn query_feeder(deps: Deps, asset: String) -> StdResult<FeederResponse> {
     let feeder = read_feeder(deps.storage, &asset)?;
     let resp = FeederResponse {
         asset,
-        feeder: deps.api.addr_humanize(&feeder)?.to_string(),
+        feeder: feeder.to_string(),
     };
 
     Ok(resp)
