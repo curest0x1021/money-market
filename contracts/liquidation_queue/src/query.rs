@@ -5,7 +5,7 @@ use crate::state::{
     read_total_bids, Bid, BidPool, CollateralInfo, Config,
 };
 use cosmwasm_bignumber::{Decimal256, Uint256};
-use cosmwasm_std::{CanonicalAddr, Deps, StdResult, Uint128};
+use cosmwasm_std::{Addr, Deps, StdResult, Uint128};
 use moneymarket::liquidation_queue::{
     BidPoolResponse, BidPoolsResponse, BidResponse, BidsResponse, CollateralInfoResponse,
     ConfigResponse, LiquidationAmountResponse,
@@ -16,8 +16,8 @@ use moneymarket::tokens::TokensHuman;
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = read_config(deps.storage)?;
     let resp = ConfigResponse {
-        owner: deps.api.addr_humanize(&config.owner)?.to_string(),
-        oracle_contract: deps.api.addr_humanize(&config.oracle_contract)?.to_string(),
+        owner: config.owner.to_string(),
+        oracle_contract: config.oracle_contract.to_string(),
         stable_denom: config.stable_denom,
         safe_ratio: config.safe_ratio,
         bid_fee: config.bid_fee,
@@ -25,7 +25,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
         liquidation_threshold: config.liquidation_threshold,
         price_timeframe: config.price_timeframe,
         waiting_period: config.waiting_period,
-        overseer: deps.api.addr_humanize(&config.overseer)?.to_string(),
+        overseer: config.overseer.to_string(),
     };
 
     Ok(resp)
@@ -45,7 +45,7 @@ pub fn query_liquidation_amount(
     collateral_prices: Vec<Decimal256>,
 ) -> StdResult<LiquidationAmountResponse> {
     let config: Config = read_config(deps.storage)?;
-    let overseer: String = deps.api.addr_humanize(&config.overseer)?.to_string();
+    let overseer: String = config.overseer.to_string();
 
     // Safely collateralized check
     if borrow_amount <= borrow_limit {
@@ -82,7 +82,7 @@ pub fn query_liquidation_amount(
     for (i, collateral) in collaterals.iter().enumerate() {
         let (price, weight, max_ltv) = (collateral_prices[i], collateral_weights[i], max_ltvs[i]);
 
-        let collateral_token_raw = deps.api.addr_canonicalize(&collateral.0)?;
+        let collateral_token_raw = deps.api.addr_validate(&collateral.0)?;
         let collateral_info = read_collateral_info(deps.storage, &collateral_token_raw)?;
 
         // calculate borrow amount and limit portion
@@ -165,7 +165,7 @@ fn compute_collateral_weights(
 
     for (collateral, price) in collaterals.iter().zip(collateral_prices.iter()) {
         let collateral_available_bids =
-            read_total_bids(deps.storage, &deps.api.addr_canonicalize(&collateral.0)?)
+            read_total_bids(deps.storage, &deps.api.addr_validate(&collateral.0)?)
                 .unwrap_or_default();
         let max_ltv = query_collateral_whitelist_info(
             &deps.querier,
@@ -212,8 +212,8 @@ pub fn query_bid(deps: Deps, bid_idx: Uint128) -> StdResult<BidResponse> {
 
     Ok(BidResponse {
         idx: bid.idx,
-        collateral_token: deps.api.addr_humanize(&bid.collateral_token)?.to_string(),
-        bidder: deps.api.addr_humanize(&bid.bidder)?.to_string(),
+        collateral_token: bid.collateral_token.to_string(),
+        bidder: bid.bidder.to_string(),
         amount: bid_amount,
         premium_slot: bid.premium_slot,
         pending_liquidated_collateral: bid_pending_liquidated_collateral,
@@ -232,8 +232,8 @@ pub fn query_bids_by_user(
     start_after: Option<Uint128>,
     limit: Option<u8>,
 ) -> StdResult<BidsResponse> {
-    let collateral_token_raw = deps.api.addr_canonicalize(&collateral_token)?;
-    let bidder_raw = deps.api.addr_canonicalize(&bidder)?;
+    let collateral_token_raw = deps.api.addr_validate(&collateral_token)?;
+    let bidder_raw = deps.api.addr_validate(&bidder)?;
 
     let bids: Vec<BidResponse> = read_bids_by_user(
         deps.storage,
@@ -262,8 +262,8 @@ pub fn query_bids_by_user(
         };
         let res = BidResponse {
             idx: bid.idx,
-            collateral_token: deps.api.addr_humanize(&bid.collateral_token)?.to_string(),
-            bidder: deps.api.addr_humanize(&bid.bidder)?.to_string(),
+            collateral_token: bid.collateral_token.to_string(),
+            bidder: bid.bidder.to_string(),
             amount: bid_amount,
             premium_slot: bid.premium_slot,
             pending_liquidated_collateral: bid_pending_liquidated_collateral,
@@ -285,7 +285,7 @@ pub fn query_bid_pool(
     collateral_token: String,
     bid_slot: u8,
 ) -> StdResult<BidPoolResponse> {
-    let collateral_token_raw: CanonicalAddr = deps.api.addr_canonicalize(&collateral_token)?;
+    let collateral_token_raw: Addr = deps.api.addr_validate(&collateral_token)?;
     let bid_pool: BidPool = read_bid_pool(deps.storage, &collateral_token_raw, bid_slot)?;
 
     Ok(BidPoolResponse {
@@ -304,7 +304,7 @@ pub fn query_bid_pools(
     start_after: Option<u8>,
     limit: Option<u8>,
 ) -> StdResult<BidPoolsResponse> {
-    let collateral_token_raw = deps.api.addr_canonicalize(&collateral_token)?;
+    let collateral_token_raw = deps.api.addr_validate(&collateral_token)?;
 
     let bid_pools: Vec<BidPoolResponse> =
         read_bid_pools(deps.storage, &collateral_token_raw, start_after, limit)?
@@ -326,12 +326,12 @@ pub fn query_collateral_info(
     deps: Deps,
     collateral_token: String,
 ) -> StdResult<CollateralInfoResponse> {
-    let collateral_token_raw = deps.api.addr_canonicalize(&collateral_token)?;
+    let collateral_token_raw = deps.api.addr_validate(&collateral_token)?;
     let collateral_info: CollateralInfo =
         read_collateral_info(deps.storage, &collateral_token_raw)?;
 
     Ok(CollateralInfoResponse {
-        collateral_token: deps.api.addr_humanize(&collateral_token_raw)?.to_string(),
+        collateral_token: collateral_token_raw.to_string(),
         bid_threshold: collateral_info.bid_threshold,
         max_slot: collateral_info.max_slot,
         premium_rate_per_slot: collateral_info.premium_rate_per_slot,

@@ -8,7 +8,7 @@ use crate::state::{
 use bigint::U256;
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
-    attr, to_binary, BankMsg, CanonicalAddr, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response,
+    attr, to_binary, BankMsg, Addr, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response,
     StdError, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
@@ -25,10 +25,9 @@ pub fn submit_bid(
     premium_slot: u8,
 ) -> StdResult<Response> {
     let config: Config = read_config(deps.storage)?;
-    let collateral_token_raw: CanonicalAddr = deps.api.addr_canonicalize(&collateral_token)?;
+    let collateral_token_raw: Addr = deps.api.addr_validate(&collateral_token)?;
     let collateral_info: CollateralInfo =
         read_collateral_info(deps.storage, &collateral_token_raw)?;
-    let bidder_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
 
     let amount: Uint256 = info
         .funds
@@ -60,7 +59,7 @@ pub fn submit_bid(
     let bid_idx: Uint128 = pop_bid_idx(deps.storage)?;
     let mut bid = Bid {
         idx: bid_idx,
-        bidder: bidder_raw,
+        bidder: info.sender,
         collateral_token: collateral_token_raw.clone(),
         product_snapshot: Decimal256::one(),
         amount,
@@ -108,8 +107,7 @@ pub fn activate_bids(
     collateral_token: String,
     bids_idx: Option<Vec<Uint128>>,
 ) -> StdResult<Response> {
-    let sender_raw: CanonicalAddr = deps.api.addr_canonicalize(info.sender.as_str())?;
-    let collateral_token_raw: CanonicalAddr = deps.api.addr_canonicalize(&collateral_token)?;
+    let collateral_token_raw: Addr = deps.api.addr_validate(&collateral_token)?;
     let collateral_info: CollateralInfo =
         read_collateral_info(deps.storage, &collateral_token_raw)?;
     let mut available_bids: Uint256 =
@@ -121,7 +119,7 @@ pub fn activate_bids(
             .map(|idx| read_bid(deps.storage, *idx))
             .collect::<StdResult<Vec<Bid>>>()?
     } else {
-        read_bids_by_user(deps.storage, &collateral_token_raw, &sender_raw, None, None)?
+        read_bids_by_user(deps.storage, &collateral_token_raw, &info.sender, None, None)?
             .into_iter()
             .filter(|b| b.wait_end.is_some())
             .collect::<Vec<Bid>>()
@@ -129,7 +127,7 @@ pub fn activate_bids(
 
     let mut total_activated_amount = Uint256::zero();
     for mut bid in bids.into_iter() {
-        if bid.bidder != sender_raw {
+        if bid.bidder != info.sender {
             return Err(StdError::generic_err("unauthorized"));
         }
         if bid.collateral_token != collateral_token_raw {
@@ -186,11 +184,10 @@ pub fn retract_bid(
     amount: Option<Uint256>,
 ) -> StdResult<Response> {
     let config: Config = read_config(deps.storage)?;
-    let sender_raw: CanonicalAddr = deps.api.addr_canonicalize(info.sender.as_str())?;
     let mut bid: Bid = read_bid(deps.storage, bid_idx)?;
-    let collateral_token_raw: CanonicalAddr = bid.collateral_token.clone();
+    let collateral_token_raw: Addr = bid.collateral_token.clone();
 
-    if bid.bidder != sender_raw {
+    if bid.bidder != info.sender {
         return Err(StdError::generic_err("unauthorized"));
     }
 
@@ -300,16 +297,15 @@ pub fn execute_liquidation(
     amount: Uint256,
 ) -> StdResult<Response> {
     let config: Config = read_config(deps.storage)?;
-    let collateral_token_raw = deps.api.addr_canonicalize(&collateral_token)?;
+    let collateral_token_raw = deps.api.addr_validate(&collateral_token)?;
     let collateral_info: CollateralInfo =
         read_collateral_info(deps.storage, &collateral_token_raw)?;
     let available_bids: Uint256 = read_total_bids(deps.storage, &collateral_token_raw)?;
 
     // only collateral token custody can execute liquidations
-    let overseer = deps.api.addr_humanize(&config.overseer)?;
     let custody_contract = query_collateral_whitelist_info(
         &deps.querier,
-        overseer.to_string(),
+        config.overseer.to_string(),
         collateral_token.to_string(),
     )?
     .custody_contract;
@@ -319,10 +315,9 @@ pub fn execute_liquidation(
         ));
     }
 
-    let oracle_contract = deps.api.addr_humanize(&config.oracle_contract)?;
     let price: PriceResponse = query_price(
         deps.as_ref(),
-        oracle_contract,
+        config.oracle_contract,
         collateral_token.to_string(),
         config.stable_denom.clone(),
         Some(TimeConstraints {
@@ -438,8 +433,7 @@ pub fn claim_liquidations(
     collateral_token: String,
     bids_idx: Option<Vec<Uint128>>,
 ) -> StdResult<Response> {
-    let sender_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
-    let collateral_token_raw = deps.api.addr_canonicalize(&collateral_token)?;
+    let collateral_token_raw = deps.api.addr_validate(&collateral_token)?;
 
     let bids: Vec<Bid> = if let Some(bids_idx) = bids_idx {
         bids_idx
@@ -447,12 +441,12 @@ pub fn claim_liquidations(
             .map(|idx| read_bid(deps.storage, *idx))
             .collect::<StdResult<Vec<Bid>>>()?
     } else {
-        read_bids_by_user(deps.storage, &collateral_token_raw, &sender_raw, None, None)?
+        read_bids_by_user(deps.storage, &collateral_token_raw, &info.sender, None, None)?
     };
 
     let mut claim_amount = Uint256::zero();
     for bid in bids.into_iter() {
-        if bid.bidder != sender_raw {
+        if bid.bidder != info.sender {
             return Err(StdError::generic_err("unauthorized"));
         }
         if bid.collateral_token != collateral_token_raw {
@@ -546,7 +540,7 @@ fn process_bid_activation(bid: &mut Bid, bid_pool: &mut BidPool, amount: Uint256
 fn execute_pool_liquidation(
     storage: &mut dyn Storage,
     bid_pool: &mut BidPool,
-    collateral_token: &CanonicalAddr,
+    collateral_token: &Addr,
     premium_slot: u8,
     collateral_to_liquidate: Uint256,
     price: Decimal256,

@@ -31,8 +31,8 @@ pub fn instantiate(
     store_config(
         deps.storage,
         &Config {
-            owner: deps.api.addr_canonicalize(&msg.owner)?,
-            oracle_contract: deps.api.addr_canonicalize(&msg.oracle_contract)?,
+            owner: deps.api.addr_validate(&msg.owner)?,
+            oracle_contract: deps.api.addr_validate(&msg.oracle_contract)?,
             stable_denom: msg.stable_denom,
             safe_ratio: msg.safe_ratio,
             bid_fee: msg.bid_fee,
@@ -40,7 +40,7 @@ pub fn instantiate(
             liquidation_threshold: msg.liquidation_threshold,
             price_timeframe: msg.price_timeframe,
             waiting_period: msg.waiting_period,
-            overseer: deps.api.addr_canonicalize(&msg.overseer)?,
+            overseer: deps.api.addr_validate(&msg.overseer)?,
         },
     )?;
 
@@ -154,16 +154,16 @@ pub fn update_config(
     overseer: Option<String>,
 ) -> StdResult<Response> {
     let mut config: Config = read_config(deps.storage)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+    if info.sender != config.owner {
         return Err(StdError::generic_err("unauthorized"));
     }
 
     if let Some(owner) = owner {
-        config.owner = deps.api.addr_canonicalize(&owner)?;
+        config.owner = deps.api.addr_validate(&owner)?;
     }
 
     if let Some(oracle_contract) = oracle_contract {
-        config.oracle_contract = deps.api.addr_canonicalize(&oracle_contract)?;
+        config.oracle_contract = deps.api.addr_validate(&oracle_contract)?;
     }
 
     if let Some(safe_ratio) = safe_ratio {
@@ -193,7 +193,7 @@ pub fn update_config(
     }
 
     if let Some(overseer) = overseer {
-        config.overseer = deps.api.addr_canonicalize(&overseer)?;
+        config.overseer = deps.api.addr_validate(&overseer)?;
     }
 
     store_config(deps.storage, &config)?;
@@ -209,8 +209,8 @@ pub fn whitelist_collateral(
     premium_rate_per_slot: Decimal256,
 ) -> StdResult<Response> {
     let config: Config = read_config(deps.storage)?;
-    let collateral_token_raw = deps.api.addr_canonicalize(&collateral_token)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+    let collateral_token_raw = deps.api.addr_validate(&collateral_token)?;
+    if info.sender != config.owner {
         return Err(StdError::generic_err("unauthorized"));
     }
 
@@ -220,8 +220,7 @@ pub fn whitelist_collateral(
     }
 
     // check if the colalteral is whitelisted in overseer
-    let overseer = deps.api.addr_humanize(&config.overseer)?;
-    query_collateral_whitelist_info(&deps.querier, overseer.to_string(), collateral_token)
+    query_collateral_whitelist_info(&deps.querier, config.overseer.to_string(), collateral_token)
         .map_err(|_| {
             StdError::generic_err("This collateral is not whitelisted in Anchor overseer")
         })?;
@@ -253,8 +252,8 @@ pub fn update_collateral_info(
     max_slot: Option<u8>,
 ) -> StdResult<Response> {
     let config: Config = read_config(deps.storage)?;
-    let collateral_token_raw = deps.api.addr_canonicalize(&collateral_token)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+    let collateral_token_raw = deps.api.addr_validate(&collateral_token)?;
+    if info.sender != config.owner {
         return Err(StdError::generic_err("unauthorized"));
     }
 

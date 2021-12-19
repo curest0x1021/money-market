@@ -1,5 +1,5 @@
 use cosmwasm_bignumber::{Decimal256, Uint256};
-use cosmwasm_std::{CanonicalAddr, Order, StdError, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage, Uint128};
 use cosmwasm_storage::{singleton, singleton_read, Bucket, ReadonlyBucket};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,8 +20,8 @@ const DEFAULT_LIMIT: u8 = 10;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    pub owner: CanonicalAddr,
-    pub oracle_contract: CanonicalAddr,
+    pub owner: Addr,
+    pub oracle_contract: Addr,
     pub stable_denom: String,
     pub safe_ratio: Decimal256,
     pub bid_fee: Decimal256,
@@ -29,7 +29,7 @@ pub struct Config {
     pub liquidation_threshold: Uint256,
     pub price_timeframe: u64,
     pub waiting_period: u64,
-    pub overseer: CanonicalAddr,
+    pub overseer: Addr,
 }
 
 pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()> {
@@ -49,28 +49,28 @@ pub fn pop_bid_idx(storage: &mut dyn Storage) -> StdResult<Uint128> {
 
 pub fn store_total_bids(
     storage: &mut dyn Storage,
-    collateral_token: &CanonicalAddr,
+    collateral_token: &Addr,
     total_bids: Uint256,
 ) -> StdResult<()> {
     let mut total_bids_bucket: Bucket<Uint256> =
         Bucket::new(storage, PREFIX_TOTAL_BIDS_BY_COLLATERAL);
-    total_bids_bucket.save(collateral_token.as_slice(), &total_bids)?;
+    total_bids_bucket.save(collateral_token.as_bytes(), &total_bids)?;
 
     Ok(())
 }
 
 pub fn read_total_bids(
     storage: &dyn Storage,
-    collateral_token: &CanonicalAddr,
+    collateral_token: &Addr,
 ) -> StdResult<Uint256> {
     let total_bids_bucket: ReadonlyBucket<Uint256> =
         ReadonlyBucket::new(storage, PREFIX_TOTAL_BIDS_BY_COLLATERAL);
-    total_bids_bucket.load(collateral_token.as_slice())
+    total_bids_bucket.load(collateral_token.as_bytes())
 }
 
 pub fn store_epoch_scale_sum(
     storage: &mut dyn Storage,
-    collateral_token: &CanonicalAddr,
+    collateral_token: &Addr,
     premium_slot: u8,
     epoch: Uint128,
     scale: Uint128,
@@ -80,7 +80,7 @@ pub fn store_epoch_scale_sum(
         storage,
         &[
             PREFIX_EPOCH_SCALE_SUM,
-            collateral_token.as_slice(),
+            collateral_token.as_bytes(),
             &premium_slot.to_be_bytes(),
             &epoch.u128().to_be_bytes(),
         ],
@@ -90,7 +90,7 @@ pub fn store_epoch_scale_sum(
 
 pub fn read_epoch_scale_sum(
     storage: &dyn Storage,
-    collateral_token: &CanonicalAddr,
+    collateral_token: &Addr,
     premium_slot: u8,
     epoch: Uint128,
     scale: Uint128,
@@ -99,7 +99,7 @@ pub fn read_epoch_scale_sum(
         storage,
         &[
             PREFIX_EPOCH_SCALE_SUM,
-            collateral_token.as_slice(),
+            collateral_token.as_bytes(),
             &premium_slot.to_be_bytes(),
             &epoch.u128().to_be_bytes(),
         ],
@@ -109,7 +109,7 @@ pub fn read_epoch_scale_sum(
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CollateralInfo {
-    pub collateral_token: CanonicalAddr,
+    pub collateral_token: Addr,
     pub bid_threshold: Uint256,
     pub max_slot: u8,
     pub premium_rate_per_slot: Decimal256,
@@ -117,24 +117,24 @@ pub struct CollateralInfo {
 
 pub fn store_collateral_info(
     storage: &mut dyn Storage,
-    collateral_token: &CanonicalAddr,
+    collateral_token: &Addr,
     collateral_info: &CollateralInfo,
 ) -> StdResult<()> {
     let mut collateral_info_bucket: Bucket<CollateralInfo> =
         Bucket::new(storage, PREFIX_COLLATERAL_INFO);
-    collateral_info_bucket.save(collateral_token.as_slice(), collateral_info)?;
+    collateral_info_bucket.save(collateral_token.as_bytes(), collateral_info)?;
 
     Ok(())
 }
 
 pub fn read_collateral_info(
     storage: &dyn Storage,
-    collateral_token: &CanonicalAddr,
+    collateral_token: &Addr,
 ) -> StdResult<CollateralInfo> {
     let collateral_info_bucket: ReadonlyBucket<CollateralInfo> =
         ReadonlyBucket::new(storage, PREFIX_COLLATERAL_INFO);
     collateral_info_bucket
-        .load(collateral_token.as_slice())
+        .load(collateral_token.as_bytes())
         .map_err(|_| StdError::generic_err("Collateral is not whitelisted"))
 }
 
@@ -152,25 +152,25 @@ pub struct BidPool {
 
 pub fn store_bid_pool(
     storage: &mut dyn Storage,
-    collateral_token: &CanonicalAddr,
+    collateral_token: &Addr,
     premium_slot: u8,
     bid_pool: &BidPool,
 ) -> StdResult<()> {
     let mut bid_pool_bucket: Bucket<BidPool> = Bucket::multilevel(
         storage,
-        &[PREFIX_BID_POOL_BY_COLLATERAL, collateral_token.as_slice()],
+        &[PREFIX_BID_POOL_BY_COLLATERAL, collateral_token.as_bytes()],
     );
     bid_pool_bucket.save(&premium_slot.to_be_bytes(), bid_pool)
 }
 
 pub fn read_bid_pool(
     storage: &dyn Storage,
-    collateral_token: &CanonicalAddr,
+    collateral_token: &Addr,
     premium_slot: u8,
 ) -> StdResult<BidPool> {
     let bid_pool_bucket: ReadonlyBucket<BidPool> = ReadonlyBucket::multilevel(
         storage,
-        &[PREFIX_BID_POOL_BY_COLLATERAL, collateral_token.as_slice()],
+        &[PREFIX_BID_POOL_BY_COLLATERAL, collateral_token.as_bytes()],
     );
     bid_pool_bucket
         .load(&premium_slot.to_be_bytes())
@@ -186,7 +186,7 @@ pub fn read_or_create_bid_pool(
         storage,
         &[
             PREFIX_BID_POOL_BY_COLLATERAL,
-            collateral_info.collateral_token.as_slice(),
+            collateral_info.collateral_token.as_bytes(),
         ],
     );
     match bid_pool_bucket.load(&premium_slot.to_be_bytes()) {
@@ -220,13 +220,13 @@ pub fn read_or_create_bid_pool(
 
 pub fn read_bid_pools(
     storage: &dyn Storage,
-    collateral_token: &CanonicalAddr,
+    collateral_token: &Addr,
     start_after: Option<u8>,
     limit: Option<u8>,
 ) -> StdResult<Vec<BidPool>> {
     let bid_pool_bucket: ReadonlyBucket<BidPool> = ReadonlyBucket::multilevel(
         storage,
-        &[PREFIX_BID_POOL_BY_COLLATERAL, collateral_token.as_slice()],
+        &[PREFIX_BID_POOL_BY_COLLATERAL, collateral_token.as_bytes()],
     );
 
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
@@ -245,9 +245,9 @@ pub fn read_bid_pools(
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Bid {
     pub idx: Uint128,
-    pub collateral_token: CanonicalAddr,
+    pub collateral_token: Addr,
     pub premium_slot: u8,
-    pub bidder: CanonicalAddr,
+    pub bidder: Addr,
     pub amount: Uint256,
     pub product_snapshot: Decimal256,
     pub sum_snapshot: Decimal256,
@@ -265,8 +265,8 @@ pub fn store_bid(storage: &mut dyn Storage, bid_idx: Uint128, bid: &Bid) -> StdR
         storage,
         &[
             PREFIX_BID_BY_USER,
-            bid.collateral_token.as_slice(),
-            bid.bidder.as_slice(),
+            bid.collateral_token.as_bytes(),
+            bid.bidder.as_bytes(),
         ],
     );
     bid_indexer_by_user.save(&bid_idx.u128().to_be_bytes(), &true)?;
@@ -284,8 +284,8 @@ pub fn remove_bid(storage: &mut dyn Storage, bid_idx: Uint128) -> StdResult<()> 
         storage,
         &[
             PREFIX_BID_BY_USER,
-            bid.collateral_token.as_slice(),
-            bid.bidder.as_slice(),
+            bid.collateral_token.as_bytes(),
+            bid.bidder.as_bytes(),
         ],
     );
     bid_indexer_by_user.remove(&bid_idx.u128().to_be_bytes());
@@ -302,8 +302,8 @@ pub fn read_bid(storage: &dyn Storage, bid_idx: Uint128) -> StdResult<Bid> {
 
 pub fn read_bids_by_user(
     storage: &dyn Storage,
-    collateral_token: &CanonicalAddr,
-    bidder: &CanonicalAddr,
+    collateral_token: &Addr,
+    bidder: &Addr,
     start_after: Option<Uint128>,
     limit: Option<u8>,
 ) -> StdResult<Vec<Bid>> {
@@ -311,8 +311,8 @@ pub fn read_bids_by_user(
         storage,
         &[
             PREFIX_BID_BY_USER,
-            collateral_token.as_slice(),
-            bidder.as_slice(),
+            collateral_token.as_bytes(),
+            bidder.as_bytes(),
         ],
     );
 
