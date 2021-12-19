@@ -6,7 +6,7 @@ use crate::state::{
 
 use cosmwasm_bignumber::Uint256;
 use cosmwasm_std::{
-    attr, to_binary, Addr, CanonicalAddr, CosmosMsg, Deps, DepsMut, MessageInfo, Response,
+    attr, to_binary, Addr, CosmosMsg, Deps, DepsMut, MessageInfo, Response,
     StdResult, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
@@ -21,14 +21,13 @@ pub fn deposit_collateral(
     borrower: Addr,
     amount: Uint256,
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
-    let borrower_raw = deps.api.addr_canonicalize(borrower.as_str())?;
-    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower_raw);
+    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower);
 
     // increase borrower collateral
     borrower_info.balance += amount;
     borrower_info.spendable += amount;
 
-    store_borrower_info(deps.storage, &borrower_raw, &borrower_info)?;
+    store_borrower_info(deps.storage, &borrower, &borrower_info)?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "deposit_collateral"),
@@ -47,8 +46,7 @@ pub fn withdraw_collateral(
     let config: Config = read_config(deps.storage)?;
 
     let borrower = info.sender;
-    let borrower_raw = deps.api.addr_canonicalize(borrower.as_str())?;
-    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower_raw);
+    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower);
 
     // Check spendable balance
     let amount = amount.unwrap_or(borrower_info.spendable);
@@ -63,17 +61,14 @@ pub fn withdraw_collateral(
     borrower_info.spendable = borrower_info.spendable - amount;
 
     if borrower_info.balance == Uint256::zero() {
-        remove_borrower_info(deps.storage, &borrower_raw);
+        remove_borrower_info(deps.storage, &borrower);
     } else {
-        store_borrower_info(deps.storage, &borrower_raw, &borrower_info)?;
+        store_borrower_info(deps.storage, &borrower, &borrower_info)?;
     }
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps
-                .api
-                .addr_humanize(&config.collateral_token)?
-                .to_string(),
+            contract_addr: config.collateral_token.to_string(),
             funds: vec![],
             msg: to_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: borrower.to_string(),
@@ -97,12 +92,11 @@ pub fn lock_collateral(
     amount: Uint256,
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.overseer_contract {
+    if info.sender != config.overseer_contract {
         return Err(ContractError::Unauthorized {});
     }
 
-    let borrower_raw: CanonicalAddr = deps.api.addr_canonicalize(borrower.as_str())?;
-    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower_raw);
+    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower);
     if amount > borrower_info.spendable {
         return Err(ContractError::LockAmountExceedsSpendable(
             borrower_info.spendable.into(),
@@ -110,7 +104,7 @@ pub fn lock_collateral(
     }
 
     borrower_info.spendable = borrower_info.spendable - amount;
-    store_borrower_info(deps.storage, &borrower_raw, &borrower_info)?;
+    store_borrower_info(deps.storage, &borrower, &borrower_info)?;
     Ok(Response::new().add_attributes(vec![
         attr("action", "lock_collateral"),
         attr("borrower", borrower),
@@ -128,12 +122,11 @@ pub fn unlock_collateral(
     amount: Uint256,
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.overseer_contract {
+    if info.sender != config.overseer_contract {
         return Err(ContractError::Unauthorized {});
     }
 
-    let borrower_raw: CanonicalAddr = deps.api.addr_canonicalize(borrower.as_str())?;
-    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower_raw);
+    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower);
     let borrowed_amt = borrower_info.balance - borrower_info.spendable;
     if amount > borrowed_amt {
         return Err(ContractError::UnlockAmountExceedsLocked(
@@ -142,7 +135,7 @@ pub fn unlock_collateral(
     }
 
     borrower_info.spendable += amount;
-    store_borrower_info(deps.storage, &borrower_raw, &borrower_info)?;
+    store_borrower_info(deps.storage, &borrower, &borrower_info)?;
 
     Ok(Response::new().add_attributes(vec![
         attr("action", "unlock_collateral"),
@@ -159,12 +152,10 @@ pub fn liquidate_collateral(
     amount: Uint256,
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.overseer_contract {
+    if info.sender != config.overseer_contract {
         return Err(ContractError::Unauthorized {});
     }
-
-    let borrower_raw: CanonicalAddr = deps.api.addr_canonicalize(borrower.as_str())?;
-    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower_raw);
+    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower);
     let borrowed_amt = borrower_info.balance - borrower_info.spendable;
     if amount > borrowed_amt {
         return Err(ContractError::LiquidationAmountExceedsLocked(
@@ -173,30 +164,19 @@ pub fn liquidate_collateral(
     }
 
     borrower_info.balance = borrower_info.balance - amount;
-    store_borrower_info(deps.storage, &borrower_raw, &borrower_info)?;
+    store_borrower_info(deps.storage, &borrower, &borrower_info)?;
 
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps
-                .api
-                .addr_humanize(&config.collateral_token)?
-                .to_string(),
+            contract_addr: config.collateral_token.to_string(),
             funds: vec![],
             msg: to_binary(&Cw20ExecuteMsg::Send {
-                contract: deps
-                    .api
-                    .addr_humanize(&config.liquidation_contract)?
-                    .to_string(),
+                contract: config.liquidation_contract.to_string(),
                 amount: amount.into(),
                 msg: to_binary(&LiquidationCw20HookMsg::ExecuteBid {
                     liquidator: liquidator.to_string(),
-                    fee_address: Some(
-                        deps.api
-                            .addr_humanize(&config.overseer_contract)?
-                            .to_string(),
-                    ),
-                    repay_address: Some(
-                        deps.api.addr_humanize(&config.market_contract)?.to_string(),
+                    fee_address: Some(config.overseer_contract.to_string()),
+                    repay_address: Some(config.market_contract.to_string(),
                     ),
                 })?,
             })?,
@@ -210,8 +190,7 @@ pub fn liquidate_collateral(
 }
 
 pub fn query_borrower(deps: Deps, borrower: Addr) -> StdResult<BorrowerResponse> {
-    let borrower_raw = deps.api.addr_canonicalize(borrower.as_str())?;
-    let borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower_raw);
+    let borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower);
     Ok(BorrowerResponse {
         borrower: borrower.to_string(),
         balance: borrower_info.balance,
@@ -224,12 +203,6 @@ pub fn query_borrowers(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<BorrowersResponse> {
-    let start_after = if let Some(start_after) = start_after {
-        Some(deps.api.addr_canonicalize(start_after.as_str())?)
-    } else {
-        None
-    };
-
     let borrowers = read_borrowers(deps, start_after, limit)?;
     Ok(BorrowersResponse { borrowers })
 }

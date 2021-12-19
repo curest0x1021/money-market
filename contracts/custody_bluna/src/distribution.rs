@@ -26,15 +26,14 @@ pub fn distribute_rewards(
     info: MessageInfo,
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    if config.overseer_contract != deps.api.addr_canonicalize(info.sender.as_str())? {
+    if config.overseer_contract != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
     let contract_addr = env.contract.address;
-    let reward_contract = deps.api.addr_humanize(&config.reward_contract)?;
 
     let accrued_rewards =
-        get_accrued_rewards(deps.as_ref(), reward_contract.clone(), contract_addr)?;
+        get_accrued_rewards(deps.as_ref(), config.reward_contract.clone(), contract_addr)?;
     if accrued_rewards < REWARDS_THRESHOLD {
         return Ok(Response::default());
     }
@@ -43,7 +42,7 @@ pub fn distribute_rewards(
     Ok(
         Response::new().add_submessages(vec![SubMsg::reply_on_success(
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: reward_contract.to_string(),
+                contract_addr: config.reward_contract.to_string(),
                 funds: vec![],
                 msg: to_binary(&RewardContractExecuteMsg::ClaimRewards { recipient: None })?,
             }),
@@ -60,7 +59,6 @@ pub fn distribute_hook(
 ) -> Result<Response<TerraMsgWrapper>, ContractError> {
     let contract_addr = env.contract.address;
     let config: Config = read_config(deps.storage)?;
-    let overseer_contract = deps.api.addr_humanize(&config.overseer_contract)?;
 
     // reward_amount = (prev_balance + reward_amount) - prev_balance
     // = (0 + reward_amount) - 0 = reward_amount = balance
@@ -72,7 +70,7 @@ pub fn distribute_hook(
     let mut messages: Vec<CosmosMsg<TerraMsgWrapper>> = vec![];
     if !reward_amount.is_zero() {
         messages.push(CosmosMsg::Bank(BankMsg::Send {
-            to_address: overseer_contract.to_string(),
+            to_address: config.overseer_contract.to_string(),
             amount: vec![deduct_tax(
                 deps.as_ref(),
                 Coin {
