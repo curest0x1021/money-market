@@ -51,7 +51,7 @@ pub fn deposit_stable(
     store_state(deps.storage, &state)?;
     Ok(Response::new()
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps.api.addr_humanize(&config.aterra_contract)?.to_string(),
+            contract_addr: config.aterra_contract.to_string(),
             funds: vec![],
             msg: to_binary(&Cw20ExecuteMsg::Mint {
                 recipient: info.sender.to_string(),
@@ -97,7 +97,7 @@ pub fn redeem_stable(
     Ok(Response::new()
         .add_messages(vec![
             CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: deps.api.addr_humanize(&config.aterra_contract)?.to_string(),
+                contract_addr: config.aterra_contract.to_string(),
                 funds: vec![],
                 msg: to_binary(&Cw20ExecuteMsg::Burn {
                     amount: burn_amount,
@@ -144,10 +144,10 @@ pub(crate) fn compute_exchange_rate(
     state: &State,
     deposit_amount: Option<Uint256>,
 ) -> StdResult<Decimal256> {
-    let aterra_supply = query_supply(deps, deps.api.addr_humanize(&config.aterra_contract)?)?;
+    let aterra_supply = query_supply(deps, deps.api.addr_validate(&config.aterra_contract.as_str())?)?;
     let balance = query_balance(
         deps,
-        deps.api.addr_humanize(&config.contract_addr)?,
+        deps.api.addr_validate(&config.contract_addr.as_str())?,
         config.stable_denom.to_string(),
     )? - deposit_amount.unwrap_or_else(Uint256::zero);
 

@@ -13,7 +13,7 @@ use crate::state::{read_config, read_state, store_config, store_state, Config, S
 
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
-    attr, from_binary, to_binary, Addr, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Deps,
+    attr, from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps,
     DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg, MinterResponse};
@@ -54,14 +54,14 @@ pub fn instantiate(
     store_config(
         deps.storage,
         &Config {
-            contract_addr: deps.api.addr_canonicalize(env.contract.address.as_str())?,
-            owner_addr: deps.api.addr_canonicalize(&msg.owner_addr)?,
-            aterra_contract: CanonicalAddr::from(vec![]),
-            overseer_contract: CanonicalAddr::from(vec![]),
-            interest_model: CanonicalAddr::from(vec![]),
-            distribution_model: CanonicalAddr::from(vec![]),
-            collector_contract: CanonicalAddr::from(vec![]),
-            distributor_contract: CanonicalAddr::from(vec![]),
+            contract_addr: deps.api.addr_validate(env.contract.address.as_str())?,
+            owner_addr: deps.api.addr_validate(&msg.owner_addr)?,
+            aterra_contract: Addr::unchecked(""),
+            overseer_contract: Addr::unchecked(""),
+            interest_model: Addr::unchecked(""),
+            distribution_model: Addr::unchecked(""),
+            collector_contract: Addr::unchecked(""),
+            distributor_contract: Addr::unchecked(""),
             stable_denom: msg.stable_denom.clone(),
             max_borrow_factor: msg.max_borrow_factor,
         },
@@ -233,7 +233,7 @@ pub fn receive_cw20(
         Ok(Cw20HookMsg::RedeemStable {}) => {
             // only asset contract can execute this message
             let config: Config = read_config(deps.storage)?;
-            if deps.api.addr_canonicalize(contract_addr.as_str())? != config.aterra_contract {
+            if contract_addr != config.aterra_contract {
                 return Err(ContractError::Unauthorized {});
             }
 
@@ -246,11 +246,11 @@ pub fn receive_cw20(
 
 pub fn register_aterra(deps: DepsMut, token_addr: Addr) -> Result<Response, ContractError> {
     let mut config: Config = read_config(deps.storage)?;
-    if config.aterra_contract != CanonicalAddr::from(vec![]) {
+    if config.aterra_contract != Addr::unchecked("") {
         return Err(ContractError::Unauthorized {});
     }
 
-    config.aterra_contract = deps.api.addr_canonicalize(token_addr.as_str())?;
+    config.aterra_contract = token_addr.clone();
     store_config(deps.storage, &config)?;
 
     Ok(Response::new().add_attributes(vec![attr("aterra", token_addr)]))
@@ -265,20 +265,20 @@ pub fn register_contracts(
     distributor_contract: Addr,
 ) -> Result<Response, ContractError> {
     let mut config: Config = read_config(deps.storage)?;
-    if config.overseer_contract != CanonicalAddr::from(vec![])
-        || config.interest_model != CanonicalAddr::from(vec![])
-        || config.distribution_model != CanonicalAddr::from(vec![])
-        || config.collector_contract != CanonicalAddr::from(vec![])
-        || config.distributor_contract != CanonicalAddr::from(vec![])
+    if config.overseer_contract != Addr::unchecked("")
+        || config.interest_model != Addr::unchecked("")
+        || config.distribution_model != Addr::unchecked("")
+        || config.collector_contract != Addr::unchecked("")
+        || config.distributor_contract != Addr::unchecked("")
     {
         return Err(ContractError::Unauthorized {});
     }
 
-    config.overseer_contract = deps.api.addr_canonicalize(overseer_contract.as_str())?;
-    config.interest_model = deps.api.addr_canonicalize(interest_model.as_str())?;
-    config.distribution_model = deps.api.addr_canonicalize(distribution_model.as_str())?;
-    config.collector_contract = deps.api.addr_canonicalize(collector_contract.as_str())?;
-    config.distributor_contract = deps.api.addr_canonicalize(distributor_contract.as_str())?;
+    config.overseer_contract = overseer_contract;
+    config.interest_model = interest_model;
+    config.distribution_model = distribution_model;
+    config.collector_contract = collector_contract;
+    config.distributor_contract = distributor_contract;
     store_config(deps.storage, &config)?;
 
     Ok(Response::default())
@@ -296,12 +296,12 @@ pub fn update_config(
     let mut config: Config = read_config(deps.storage)?;
 
     // permission check
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner_addr {
+    if info.sender != config.owner_addr {
         return Err(ContractError::Unauthorized {});
     }
 
     if let Some(owner_addr) = owner_addr {
-        config.owner_addr = deps.api.addr_canonicalize(owner_addr.as_str())?;
+        config.owner_addr = owner_addr;
     }
 
     if interest_model.is_some() {
@@ -310,12 +310,12 @@ pub fn update_config(
         store_state(deps.storage, &state)?;
 
         if let Some(interest_model) = interest_model {
-            config.interest_model = deps.api.addr_canonicalize(interest_model.as_str())?;
+            config.interest_model = interest_model;
         }
     }
 
     if let Some(distribution_model) = distribution_model {
-        config.distribution_model = deps.api.addr_canonicalize(distribution_model.as_str())?;
+        config.distribution_model = distribution_model;
     }
 
     if let Some(max_borrow_factor) = max_borrow_factor {
@@ -336,7 +336,7 @@ pub fn execute_epoch_operations(
     distributed_interest: Uint256,
 ) -> Result<Response, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    if config.overseer_contract != deps.api.addr_canonicalize(info.sender.as_str())? {
+    if config.overseer_contract != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -345,17 +345,17 @@ pub fn execute_epoch_operations(
     // Compute interest and reward before updating anc_emission_rate
     let aterra_supply = query_supply(
         deps.as_ref(),
-        deps.api.addr_humanize(&config.aterra_contract)?,
+        config.aterra_contract,
     )?;
     let balance: Uint256 = query_balance(
         deps.as_ref(),
-        deps.api.addr_humanize(&config.contract_addr)?,
+        config.contract_addr,
         config.stable_denom.to_string(),
     )? - distributed_interest;
 
     let borrow_rate_res: BorrowRateResponse = query_borrow_rate(
         deps.as_ref(),
-        deps.api.addr_humanize(&config.interest_model)?,
+        config.interest_model,
         balance,
         state.total_liabilities,
         state.total_reserves,
@@ -384,10 +384,7 @@ pub fn execute_epoch_operations(
         state.total_reserves = state.total_reserves - Decimal256::from_uint256(total_reserves);
 
         vec![CosmosMsg::Bank(BankMsg::Send {
-            to_address: deps
-                .api
-                .addr_humanize(&config.collector_contract)?
-                .to_string(),
+            to_address: config.collector_contract.to_string(),
             amount: vec![deduct_tax(
                 deps.as_ref(),
                 Coin {
@@ -403,7 +400,7 @@ pub fn execute_epoch_operations(
     // Query updated anc_emission_rate
     state.anc_emission_rate = query_anc_emission_rate(
         deps.as_ref(),
-        deps.api.addr_humanize(&config.distribution_model)?,
+        config.distribution_model,
         deposit_rate,
         target_deposit_rate,
         threshold_deposit_rate,
@@ -453,25 +450,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config: Config = read_config(deps.storage)?;
     Ok(ConfigResponse {
-        owner_addr: deps.api.addr_humanize(&config.owner_addr)?.to_string(),
-        aterra_contract: deps.api.addr_humanize(&config.aterra_contract)?.to_string(),
-        interest_model: deps.api.addr_humanize(&config.interest_model)?.to_string(),
-        distribution_model: deps
-            .api
-            .addr_humanize(&config.distribution_model)?
-            .to_string(),
-        overseer_contract: deps
-            .api
-            .addr_humanize(&config.overseer_contract)?
-            .to_string(),
-        collector_contract: deps
-            .api
-            .addr_humanize(&config.collector_contract)?
-            .to_string(),
-        distributor_contract: deps
-            .api
-            .addr_humanize(&config.distributor_contract)?
-            .to_string(),
+        owner_addr: config.owner_addr.to_string(),
+        aterra_contract: config.aterra_contract.to_string(),
+        interest_model: config.interest_model.to_string(),
+        distribution_model: config.distribution_model.to_string(),
+        overseer_contract: config.overseer_contract.to_string(),
+        collector_contract: config.collector_contract.to_string(),
+        distributor_contract: config.distributor_contract.to_string(),
         stable_denom: config.stable_denom,
         max_borrow_factor: config.max_borrow_factor,
     })
@@ -528,10 +513,10 @@ pub fn query_epoch_state(
     let mut state: State = read_state(deps.storage)?;
 
     let distributed_interest = distributed_interest.unwrap_or_else(Uint256::zero);
-    let aterra_supply = query_supply(deps, deps.api.addr_humanize(&config.aterra_contract)?)?;
+    let aterra_supply = query_supply(deps, config.aterra_contract)?;
     let balance = query_balance(
         deps,
-        deps.api.addr_humanize(&config.contract_addr)?,
+        config.contract_addr,
         config.stable_denom.to_string(),
     )? - distributed_interest;
 
@@ -544,14 +529,14 @@ pub fn query_epoch_state(
 
         let borrow_rate_res: BorrowRateResponse = query_borrow_rate(
             deps,
-            deps.api.addr_humanize(&config.interest_model)?,
+            config.interest_model,
             balance,
             state.total_liabilities,
             state.total_reserves,
         )?;
 
         let target_deposit_rate: Decimal256 =
-            query_target_deposit_rate(deps, deps.api.addr_humanize(&config.overseer_contract)?)?;
+            query_target_deposit_rate(deps, config.overseer_contract)?;
 
         // Compute interest rate to return latest epoch state
         compute_interest_raw(

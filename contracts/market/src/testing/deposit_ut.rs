@@ -14,14 +14,14 @@ fn proper_compute_exchange_rate() {
     let env = mock_env();
     //setting up the required environment for the function call (inputs)
     let mock_config = Config {
-        contract_addr: deps.api.addr_canonicalize(MOCK_CONTRACT_ADDR).unwrap(),
-        owner_addr: deps.api.addr_canonicalize("owner").unwrap(),
-        aterra_contract: deps.api.addr_canonicalize("AT-uusd").unwrap(),
-        interest_model: deps.api.addr_canonicalize("interest").unwrap(),
-        distribution_model: deps.api.addr_canonicalize("distribution").unwrap(),
-        distributor_contract: deps.api.addr_canonicalize("distributor").unwrap(),
-        collector_contract: deps.api.addr_canonicalize("collector").unwrap(),
-        overseer_contract: deps.api.addr_canonicalize("overseer").unwrap(),
+        contract_addr: deps.api.addr_validate(MOCK_CONTRACT_ADDR).unwrap(),
+        owner_addr: deps.api.addr_validate("owner").unwrap(),
+        aterra_contract: deps.api.addr_validate("AT-uusd").unwrap(),
+        interest_model: deps.api.addr_validate("interest").unwrap(),
+        distribution_model: deps.api.addr_validate("distribution").unwrap(),
+        distributor_contract: deps.api.addr_validate("distributor").unwrap(),
+        collector_contract: deps.api.addr_validate("collector").unwrap(),
+        overseer_contract: deps.api.addr_validate("overseer").unwrap(),
         stable_denom: "uusd".to_string(),
         max_borrow_factor: Decimal256::one(),
     };

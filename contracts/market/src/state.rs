@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_bignumber::{Decimal256, Uint256};
-use cosmwasm_std::{CanonicalAddr, Deps, Order, StdResult, Storage};
+use cosmwasm_std::{Addr, Deps, Order, StdResult, Storage};
 use cosmwasm_storage::{bucket, bucket_read, ReadonlyBucket, ReadonlySingleton, Singleton};
 
 use moneymarket::market::BorrowerInfoResponse;
@@ -14,14 +14,14 @@ const PREFIX_LIABILITY: &[u8] = b"liability";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    pub contract_addr: CanonicalAddr,
-    pub owner_addr: CanonicalAddr,
-    pub aterra_contract: CanonicalAddr,
-    pub interest_model: CanonicalAddr,
-    pub distribution_model: CanonicalAddr,
-    pub overseer_contract: CanonicalAddr,
-    pub collector_contract: CanonicalAddr,
-    pub distributor_contract: CanonicalAddr,
+    pub contract_addr: Addr,
+    pub owner_addr: Addr,
+    pub aterra_contract: Addr,
+    pub interest_model: Addr,
+    pub distribution_model: Addr,
+    pub overseer_contract: Addr,
+    pub collector_contract: Addr,
+    pub distributor_contract: Addr,
     pub stable_denom: String,
     pub max_borrow_factor: Decimal256,
 }
@@ -65,14 +65,14 @@ pub fn read_state(storage: &dyn Storage) -> StdResult<State> {
 
 pub fn store_borrower_info(
     storage: &mut dyn Storage,
-    borrower: &CanonicalAddr,
+    borrower: &Addr,
     liability: &BorrowerInfo,
 ) -> StdResult<()> {
-    bucket(storage, PREFIX_LIABILITY).save(borrower.as_slice(), liability)
+    bucket(storage, PREFIX_LIABILITY).save(borrower.as_bytes(), liability)
 }
 
-pub fn read_borrower_info(storage: &dyn Storage, borrower: &CanonicalAddr) -> BorrowerInfo {
-    match bucket_read(storage, PREFIX_LIABILITY).load(borrower.as_slice()) {
+pub fn read_borrower_info(storage: &dyn Storage, borrower: &Addr) -> BorrowerInfo {
+    match bucket_read(storage, PREFIX_LIABILITY).load(borrower.as_bytes()) {
         Ok(v) => v,
         _ => BorrowerInfo {
             interest_index: Decimal256::one(),
@@ -88,7 +88,7 @@ const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 pub fn read_borrower_infos(
     deps: Deps,
-    start_after: Option<CanonicalAddr>,
+    start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<Vec<BorrowerInfoResponse>> {
     let liability_bucket: ReadonlyBucket<BorrowerInfo> =
@@ -102,7 +102,7 @@ pub fn read_borrower_infos(
         .take(limit)
         .map(|elem| {
             let (k, v) = elem?;
-            let borrower = deps.api.addr_humanize(&CanonicalAddr::from(k))?.to_string();
+            let borrower = deps.api.addr_validate(&String::from_utf8_lossy(&k))?.to_string();
             Ok(BorrowerInfoResponse {
                 borrower,
                 interest_index: v.interest_index,
@@ -115,9 +115,9 @@ pub fn read_borrower_infos(
 }
 
 // this will set the first key after the provided key, by appending a 1 byte
-fn calc_range_start(start_after: Option<CanonicalAddr>) -> Option<Vec<u8>> {
+fn calc_range_start(start_after: Option<Addr>) -> Option<Vec<u8>> {
     start_after.map(|addr| {
-        let mut v = addr.as_slice().to_vec();
+        let mut v = addr.as_bytes().to_vec();
         v.push(1);
         v
     })
