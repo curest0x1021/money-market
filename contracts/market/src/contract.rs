@@ -13,8 +13,8 @@ use crate::state::{read_config, read_state, store_config, store_state, Config, S
 
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
-    attr, from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps,
-    DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
+    attr, from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Reply, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20Coin, Cw20ReceiveMsg, MinterResponse};
 
@@ -343,10 +343,7 @@ pub fn execute_epoch_operations(
     let mut state: State = read_state(deps.storage)?;
 
     // Compute interest and reward before updating anc_emission_rate
-    let aterra_supply = query_supply(
-        deps.as_ref(),
-        config.aterra_contract,
-    )?;
+    let aterra_supply = query_supply(deps.as_ref(), config.aterra_contract)?;
     let balance: Uint256 = query_balance(
         deps.as_ref(),
         config.contract_addr,
@@ -514,11 +511,8 @@ pub fn query_epoch_state(
 
     let distributed_interest = distributed_interest.unwrap_or_else(Uint256::zero);
     let aterra_supply = query_supply(deps, config.aterra_contract)?;
-    let balance = query_balance(
-        deps,
-        config.contract_addr,
-        config.stable_denom.to_string(),
-    )? - distributed_interest;
+    let balance = query_balance(deps, config.contract_addr, config.stable_denom.to_string())?
+        - distributed_interest;
 
     if let Some(block_height) = block_height {
         if block_height < state.last_interest_updated {

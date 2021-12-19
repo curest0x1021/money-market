@@ -8,8 +8,8 @@ use crate::state::{
 use bigint::U256;
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
-    attr, to_binary, BankMsg, Addr, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult, Storage, Uint128, WasmMsg,
+    attr, to_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, StdError,
+    StdResult, Storage, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use moneymarket::oracle::PriceResponse;
@@ -119,10 +119,16 @@ pub fn activate_bids(
             .map(|idx| read_bid(deps.storage, *idx))
             .collect::<StdResult<Vec<Bid>>>()?
     } else {
-        read_bids_by_user(deps.storage, &collateral_token_raw, &info.sender, None, None)?
-            .into_iter()
-            .filter(|b| b.wait_end.is_some())
-            .collect::<Vec<Bid>>()
+        read_bids_by_user(
+            deps.storage,
+            &collateral_token_raw,
+            &info.sender,
+            None,
+            None,
+        )?
+        .into_iter()
+        .filter(|b| b.wait_end.is_some())
+        .collect::<Vec<Bid>>()
     };
 
     let mut total_activated_amount = Uint256::zero();
@@ -441,7 +447,13 @@ pub fn claim_liquidations(
             .map(|idx| read_bid(deps.storage, *idx))
             .collect::<StdResult<Vec<Bid>>>()?
     } else {
-        read_bids_by_user(deps.storage, &collateral_token_raw, &info.sender, None, None)?
+        read_bids_by_user(
+            deps.storage,
+            &collateral_token_raw,
+            &info.sender,
+            None,
+            None,
+        )?
     };
 
     let mut claim_amount = Uint256::zero();

@@ -104,7 +104,10 @@ pub fn read_whitelist(
         .take(limit)
         .map(|elem| {
             let (k, v) = elem?;
-            let collateral_token = deps.api.addr_validate(&String::from_utf8_lossy(&k))?.to_string();
+            let collateral_token = deps
+                .api
+                .addr_validate(&String::from_utf8_lossy(&k))?
+                .to_string();
             let custody_contract = v.custody_contract.to_string();
             Ok(WhitelistResponseElem {
                 name: v.name,
@@ -161,7 +164,10 @@ pub fn read_all_collaterals(
         .take(limit)
         .map(|elem| {
             let (k, v) = elem?;
-            let borrower = deps.api.addr_validate(&String::from_utf8_lossy(&k))?.to_string();
+            let borrower = deps
+                .api
+                .addr_validate(&String::from_utf8_lossy(&k))?
+                .to_string();
             let collaterals: Vec<(String, Uint256)> = v
                 .iter()
                 .map(|c| Ok((c.0.to_string(), c.1)))

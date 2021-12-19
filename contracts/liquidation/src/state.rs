@@ -63,11 +63,7 @@ pub fn store_bid(
     Ok(())
 }
 
-pub fn remove_bid(
-    storage: &mut dyn Storage,
-    bidder: &Addr,
-    collateral_token: &Addr,
-) {
+pub fn remove_bid(storage: &mut dyn Storage, bidder: &Addr, collateral_token: &Addr) {
     let mut bid_bucket: Bucket<Bid> = Bucket::new(storage, PREFIX_BID);
     bid_bucket.remove(&[bidder.as_bytes(), collateral_token.as_bytes()].concat());
 

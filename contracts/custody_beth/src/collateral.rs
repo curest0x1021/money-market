@@ -6,8 +6,7 @@ use crate::state::{
 
 use cosmwasm_bignumber::Uint256;
 use cosmwasm_std::{
-    attr, to_binary, Addr, CosmosMsg, Deps, DepsMut, MessageInfo, Response,
-    StdResult, WasmMsg,
+    attr, to_binary, Addr, CosmosMsg, Deps, DepsMut, MessageInfo, Response, StdResult, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use moneymarket::custody::{BorrowerResponse, BorrowersResponse};
@@ -177,8 +176,7 @@ pub fn liquidate_collateral(
                 msg: to_binary(&LiquidationCw20HookMsg::ExecuteBid {
                     liquidator: liquidator.to_string(),
                     fee_address: Some(config.overseer_contract.to_string()),
-                    repay_address: Some(config.market_contract.to_string(),
-                    ),
+                    repay_address: Some(config.market_contract.to_string()),
                 })?,
             })?,
         }))

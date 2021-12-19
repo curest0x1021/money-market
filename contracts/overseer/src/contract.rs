@@ -259,8 +259,7 @@ pub fn update_whitelist(
         return Err(ContractError::Unauthorized {});
     }
 
-    let mut whitelist_elem: WhitelistElem =
-        read_whitelist_elem(deps.storage, &collateral_token)?;
+    let mut whitelist_elem: WhitelistElem = read_whitelist_elem(deps.storage, &collateral_token)?;
 
     if let Some(custody_contract) = custody_contract {
         whitelist_elem.custody_contract = custody_contract;
@@ -275,10 +274,7 @@ pub fn update_whitelist(
     Ok(Response::new().add_attributes(vec![
         attr("action", "update_whitelist"),
         attr("collateral_token", collateral_token),
-        attr(
-            "custody_contract",
-            whitelist_elem.custody_contract,
-        ),
+        attr("custody_contract", whitelist_elem.custody_contract),
         attr("LTV", whitelist_elem.max_ltv.to_string()),
     ]))
 }
@@ -538,10 +534,7 @@ pub fn query_whitelist(
     limit: Option<u32>,
 ) -> StdResult<WhitelistResponse> {
     if let Some(collateral_token) = collateral_token {
-        let whitelist_elem: WhitelistElem = read_whitelist_elem(
-            deps.storage,
-            &collateral_token,
-        )?;
+        let whitelist_elem: WhitelistElem = read_whitelist_elem(deps.storage, &collateral_token)?;
         Ok(WhitelistResponse {
             elems: vec![WhitelistResponseElem {
                 name: whitelist_elem.name,

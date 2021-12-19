@@ -12,4 +12,3 @@ pub mod tokens;
 
 #[cfg(test)]
 mod mock_querier;
-

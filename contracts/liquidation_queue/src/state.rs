@@ -59,10 +59,7 @@ pub fn store_total_bids(
     Ok(())
 }
 
-pub fn read_total_bids(
-    storage: &dyn Storage,
-    collateral_token: &Addr,
-) -> StdResult<Uint256> {
+pub fn read_total_bids(storage: &dyn Storage, collateral_token: &Addr) -> StdResult<Uint256> {
     let total_bids_bucket: ReadonlyBucket<Uint256> =
         ReadonlyBucket::new(storage, PREFIX_TOTAL_BIDS_BY_COLLATERAL);
     total_bids_bucket.load(collateral_token.as_bytes())

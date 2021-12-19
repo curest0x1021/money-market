@@ -422,11 +422,8 @@ fn lock_collateral() {
     );
 
     //directly checking if spendable is decreased by amount
-    let spend = read_borrower_info(
-        &deps.storage,
-        &deps.api.addr_validate("addr0000").unwrap(),
-    )
-    .spendable;
+    let spend =
+        read_borrower_info(&deps.storage, &deps.api.addr_validate("addr0000").unwrap()).spendable;
     assert_eq!(spend, Uint256::from(50u128));
 
     let msg = ExecuteMsg::WithdrawCollateral {
@@ -509,11 +506,8 @@ fn lock_collateral() {
     );
 
     //checking if amount is added to spendable
-    let spend = read_borrower_info(
-        &deps.storage,
-        &deps.api.addr_validate("addr0000").unwrap(),
-    )
-    .spendable;
+    let spend =
+        read_borrower_info(&deps.storage, &deps.api.addr_validate("addr0000").unwrap()).spendable;
     assert_eq!(spend, Uint256::from(30u128));
 
     let msg = ExecuteMsg::WithdrawCollateral {

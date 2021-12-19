@@ -202,11 +202,7 @@ pub fn execute_bid(
 }
 
 pub fn query_bid(deps: Deps, collateral_token: Addr, bidder: Addr) -> StdResult<BidResponse> {
-    let bid: Bid = read_bid(
-        deps.storage,
-        &bidder,
-        &collateral_token,
-    )?;
+    let bid: Bid = read_bid(deps.storage, &bidder, &collateral_token)?;
 
     Ok(BidResponse {
         collateral_token: collateral_token.to_string(),
@@ -222,12 +218,7 @@ pub fn query_bids_by_user(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
-    let bids: Vec<BidResponse> = read_bids_by_user(
-        deps,
-        &bidder,
-        start_after,
-        limit,
-    )?;
+    let bids: Vec<BidResponse> = read_bids_by_user(deps, &bidder, start_after, limit)?;
 
     Ok(BidsResponse { bids })
 }
@@ -238,12 +229,8 @@ pub fn query_bids_by_collateral(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
-    let bids: Vec<BidResponse> = read_bids_by_collateral(
-        deps,
-        &collateral_token,
-        start_after,
-        limit,
-    )?;
+    let bids: Vec<BidResponse> =
+        read_bids_by_collateral(deps, &collateral_token, start_after, limit)?;
 
     Ok(BidsResponse { bids })
 }

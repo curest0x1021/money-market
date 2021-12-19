@@ -81,8 +81,12 @@ pub fn unlock_collateral(
         &cur_collaterals,
         Some(env.block.time.seconds()),
     )?;
-    let borrow_amount_res: BorrowerInfoResponse =
-        query_borrower_info(deps.as_ref(), config.market_contract, borrower.clone(), env.block.height)?;
+    let borrow_amount_res: BorrowerInfoResponse = query_borrower_info(
+        deps.as_ref(),
+        config.market_contract,
+        borrower.clone(),
+        env.block.height,
+    )?;
     if borrow_limit < borrow_amount_res.loan_amount {
         return Err(ContractError::UnlockTooLarge(borrow_limit.into()));
     }
@@ -133,8 +137,12 @@ pub fn liquidate_collateral(
         &cur_collaterals,
         Some(env.block.time.seconds()),
     )?;
-    let borrow_amount_res: BorrowerInfoResponse =
-        query_borrower_info(deps.as_ref(), config.market_contract.clone(), borrower.clone(), env.block.height)?;
+    let borrow_amount_res: BorrowerInfoResponse = query_borrower_info(
+        deps.as_ref(),
+        config.market_contract.clone(),
+        borrower.clone(),
+        env.block.height,
+    )?;
     let borrow_amount = borrow_amount_res.loan_amount;
 
     // borrow limit is equal or bigger than loan amount
@@ -158,8 +166,11 @@ pub fn liquidate_collateral(
     cur_collaterals.sub(liquidation_amount.clone())?;
     store_collaterals(deps.storage, &borrower, &cur_collaterals)?;
 
-    let prev_balance: Uint256 =
-        query_balance(deps.as_ref(), config.market_contract.clone(), config.stable_denom)?;
+    let prev_balance: Uint256 = query_balance(
+        deps.as_ref(),
+        config.market_contract.clone(),
+        config.stable_denom,
+    )?;
 
     let liquidation_messages: Vec<CosmosMsg> = liquidation_amount
         .iter()
@@ -192,10 +203,7 @@ pub fn liquidate_collateral(
 }
 
 pub fn query_collaterals(deps: Deps, borrower: Addr) -> StdResult<CollateralsResponse> {
-    let collaterals: Tokens = read_collaterals(
-        deps.storage,
-        &borrower,
-    );
+    let collaterals: Tokens = read_collaterals(deps.storage, &borrower);
 
     Ok(CollateralsResponse {
         borrower: borrower.to_string(),
@@ -256,10 +264,7 @@ pub fn query_borrow_limit(
     borrower: Addr,
     block_time: Option<u64>,
 ) -> StdResult<BorrowLimitResponse> {
-    let collaterals = read_collaterals(
-        deps.storage,
-        &borrower,
-    );
+    let collaterals = read_collaterals(deps.storage, &borrower);
 
     // Compute borrow limit with collaterals
     let (borrow_limit, _) = compute_borrow_limit(deps, &collaterals, block_time)?;

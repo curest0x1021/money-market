@@ -77,11 +77,7 @@ pub fn read_prices(
         .collect()
 }
 
-pub fn store_feeder(
-    storage: &mut dyn Storage,
-    asset: &str,
-    feeder: &Addr,
-) -> StdResult<()> {
+pub fn store_feeder(storage: &mut dyn Storage, asset: &str, feeder: &Addr) -> StdResult<()> {
     let mut price_bucket: Bucket<Addr> = Bucket::new(storage, PREFIX_FEEDER);
     price_bucket.save(asset.as_bytes(), feeder)
 }

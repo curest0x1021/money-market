@@ -102,7 +102,10 @@ pub fn read_borrower_infos(
         .take(limit)
         .map(|elem| {
             let (k, v) = elem?;
-            let borrower = deps.api.addr_validate(&String::from_utf8_lossy(&k))?.to_string();
+            let borrower = deps
+                .api
+                .addr_validate(&String::from_utf8_lossy(&k))?
+                .to_string();
             Ok(BorrowerInfoResponse {
                 borrower,
                 interest_index: v.interest_index,

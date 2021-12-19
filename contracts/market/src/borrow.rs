@@ -245,7 +245,10 @@ pub fn compute_interest(
         return Ok(());
     }
 
-    let aterra_supply = query_supply(deps, deps.api.addr_validate(&config.aterra_contract.as_str())?)?;
+    let aterra_supply = query_supply(
+        deps,
+        deps.api.addr_validate(&config.aterra_contract.as_str())?,
+    )?;
     let balance: Uint256 = query_balance(
         deps,
         deps.api.addr_validate(&config.contract_addr.as_str())?,
@@ -260,8 +263,10 @@ pub fn compute_interest(
         state.total_reserves,
     )?;
 
-    let target_deposit_rate: Decimal256 =
-        query_target_deposit_rate(deps, deps.api.addr_validate(&config.overseer_contract.as_str())?)?;
+    let target_deposit_rate: Decimal256 = query_target_deposit_rate(
+        deps,
+        deps.api.addr_validate(&config.overseer_contract.as_str())?,
+    )?;
 
     compute_interest_raw(
         state,
@@ -361,10 +366,7 @@ pub fn query_borrower_info(
     borrower: Addr,
     block_height: Option<u64>,
 ) -> StdResult<BorrowerInfoResponse> {
-    let mut borrower_info: BorrowerInfo = read_borrower_info(
-        deps.storage,
-        &borrower,
-    );
+    let mut borrower_info: BorrowerInfo = read_borrower_info(deps.storage, &borrower);
 
     let block_height = if let Some(block_height) = block_height {
         block_height
