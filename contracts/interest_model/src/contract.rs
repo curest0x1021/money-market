@@ -21,7 +21,7 @@ pub fn instantiate(
     store_config(
         deps.storage,
         &Config {
-            owner: deps.api.addr_canonicalize(&msg.owner)?,
+            owner: deps.api.addr_validate(&msg.owner)?,
             base_rate: msg.base_rate,
             interest_multiplier: msg.interest_multiplier,
         },
@@ -63,12 +63,12 @@ pub fn update_config(
     interest_multiplier: Option<Decimal256>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = read_config(deps.storage)?;
-    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+    if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
 
     if let Some(owner) = owner {
-        config.owner = deps.api.addr_canonicalize(owner.as_str())?;
+        config.owner = owner;
     }
 
     if let Some(base_rate) = base_rate {
@@ -103,7 +103,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = read_config(deps.storage)?;
     let resp = ConfigResponse {
-        owner: deps.api.addr_humanize(&state.owner)?.to_string(),
+        owner: state.owner.to_string(),
         base_rate: state.base_rate,
         interest_multiplier: state.interest_multiplier,
     };
