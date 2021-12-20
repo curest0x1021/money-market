@@ -15,7 +15,7 @@ fn proper_compute_borrower_interest() {
         last_reward_updated: env.block.height,
         global_interest_index: Decimal256::one(),
         global_reward_index: Decimal256::zero(),
-        anc_emission_rate: Decimal256::one(),
+        ap_emission_rate: Decimal256::one(),
         prev_aterra_supply: Uint256::zero(),
         prev_exchange_rate: Decimal256::one(),
     };
@@ -41,7 +41,7 @@ fn proper_compute_borrower_interest() {
         last_reward_updated: env.block.height,
         global_interest_index: Decimal256::from_uint256(2u128),
         global_reward_index: Decimal256::zero(),
-        anc_emission_rate: Decimal256::zero(),
+        ap_emission_rate: Decimal256::zero(),
         prev_aterra_supply: Uint256::zero(),
         prev_exchange_rate: Decimal256::one(),
     };
@@ -98,7 +98,7 @@ fn proper_compute_interest() {
         last_reward_updated: env.block.height,
         global_interest_index: Decimal256::one(),
         global_reward_index: Decimal256::zero(),
-        anc_emission_rate: Decimal256::one(),
+        ap_emission_rate: Decimal256::one(),
         prev_aterra_supply: Uint256::zero(),
         prev_exchange_rate: Decimal256::one(),
     };
@@ -123,7 +123,7 @@ fn proper_compute_interest() {
             last_reward_updated: env.block.height,
             global_interest_index: Decimal256::one(),
             global_reward_index: Decimal256::zero(),
-            anc_emission_rate: Decimal256::one(),
+            ap_emission_rate: Decimal256::one(),
             prev_aterra_supply: Uint256::zero(),
             prev_exchange_rate: Decimal256::one(),
         }
@@ -148,7 +148,7 @@ fn proper_compute_interest() {
             last_reward_updated: env.block.height - 100,
             global_interest_index: Decimal256::from_uint256(2u128),
             global_reward_index: Decimal256::zero(),
-            anc_emission_rate: Decimal256::one(),
+            ap_emission_rate: Decimal256::one(),
             prev_aterra_supply: Uint256::from(2000000u64),
             prev_exchange_rate: Decimal256::from_ratio(19995, 10000),
         }
@@ -162,7 +162,7 @@ fn proper_compute_interest() {
         last_reward_updated: env.block.height,
         global_interest_index: Decimal256::one(),
         global_reward_index: Decimal256::zero(),
-        anc_emission_rate: Decimal256::one(),
+        ap_emission_rate: Decimal256::one(),
         prev_aterra_supply: Uint256::from(2000000u128),
         prev_exchange_rate: Decimal256::one(),
     };
@@ -197,7 +197,7 @@ fn proper_compute_interest() {
             last_reward_updated: env.block.height - 100,
             global_interest_index: Decimal256::from_uint256(2u128),
             global_reward_index: Decimal256::zero(),
-            anc_emission_rate: Decimal256::one(),
+            ap_emission_rate: Decimal256::one(),
             prev_aterra_supply: Uint256::from(2000000u64),
             prev_exchange_rate: Decimal256::from_uint256(2u64),
         }

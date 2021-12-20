@@ -222,7 +222,7 @@ pub fn whitelist_collateral(
     // check if the colalteral is whitelisted in overseer
     query_collateral_whitelist_info(&deps.querier, config.overseer.to_string(), collateral_token)
         .map_err(|_| {
-            StdError::generic_err("This collateral is not whitelisted in Anchor overseer")
+            StdError::generic_err("This collateral is not whitelisted in AngelProtocol overseer")
         })?;
 
     // assert max slot does not exceed cap and max premium rate does not exceed 1

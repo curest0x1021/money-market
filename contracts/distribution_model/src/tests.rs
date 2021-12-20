@@ -4,7 +4,7 @@ use cosmwasm_bignumber::Decimal256;
 use cosmwasm_std::from_binary;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use moneymarket::distribution_model::{
-    AncEmissionRateResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    ApEmissionRateResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 
 #[test]
@@ -107,57 +107,57 @@ fn proper_emission_rate() {
     // high = 8.75
     // low = 6.25
     // no changes
-    let query_msg = QueryMsg::AncEmissionRate {
+    let query_msg = QueryMsg::ApEmissionRate {
         deposit_rate: Decimal256::percent(7),
         target_deposit_rate: Decimal256::percent(10),
         threshold_deposit_rate: Decimal256::percent(5),
         current_emission_rate: Decimal256::from_uint256(99u128),
     };
     let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-    let value: AncEmissionRateResponse = from_binary(&res).unwrap();
+    let value: ApEmissionRateResponse = from_binary(&res).unwrap();
     assert_eq!("99", &value.emission_rate.to_string());
 
     // increment
-    let query_msg = QueryMsg::AncEmissionRate {
+    let query_msg = QueryMsg::ApEmissionRate {
         deposit_rate: Decimal256::percent(5),
         target_deposit_rate: Decimal256::percent(10),
         threshold_deposit_rate: Decimal256::percent(5),
         current_emission_rate: Decimal256::from_uint256(80u128),
     };
     let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-    let value: AncEmissionRateResponse = from_binary(&res).unwrap();
+    let value: ApEmissionRateResponse = from_binary(&res).unwrap();
     assert_eq!("88", &value.emission_rate.to_string());
 
     // cap
-    let query_msg = QueryMsg::AncEmissionRate {
+    let query_msg = QueryMsg::ApEmissionRate {
         deposit_rate: Decimal256::percent(5),
         target_deposit_rate: Decimal256::percent(10),
         threshold_deposit_rate: Decimal256::percent(5),
         current_emission_rate: Decimal256::from_uint256(99u128),
     };
     let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-    let value: AncEmissionRateResponse = from_binary(&res).unwrap();
+    let value: ApEmissionRateResponse = from_binary(&res).unwrap();
     assert_eq!("100", &value.emission_rate.to_string());
 
     // decrement
-    let query_msg = QueryMsg::AncEmissionRate {
+    let query_msg = QueryMsg::ApEmissionRate {
         deposit_rate: Decimal256::percent(9),
         target_deposit_rate: Decimal256::percent(10),
         threshold_deposit_rate: Decimal256::percent(5),
         current_emission_rate: Decimal256::from_uint256(99u128),
     };
     let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-    let value: AncEmissionRateResponse = from_binary(&res).unwrap();
+    let value: ApEmissionRateResponse = from_binary(&res).unwrap();
     assert_eq!("89.1", &value.emission_rate.to_string());
 
     // floor
-    let query_msg = QueryMsg::AncEmissionRate {
+    let query_msg = QueryMsg::ApEmissionRate {
         deposit_rate: Decimal256::percent(9),
         target_deposit_rate: Decimal256::percent(10),
         threshold_deposit_rate: Decimal256::percent(5),
         current_emission_rate: Decimal256::from_uint256(11u128),
     };
     let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
-    let value: AncEmissionRateResponse = from_binary(&res).unwrap();
+    let value: ApEmissionRateResponse = from_binary(&res).unwrap();
     assert_eq!("10", &value.emission_rate.to_string());
 }

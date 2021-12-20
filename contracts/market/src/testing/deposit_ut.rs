@@ -37,7 +37,7 @@ fn proper_compute_exchange_rate() {
         last_reward_updated: env.block.height,
         global_interest_index: Decimal256::one(),
         global_reward_index: Decimal256::zero(),
-        anc_emission_rate: Decimal256::one(),
+        ap_emission_rate: Decimal256::one(),
         prev_aterra_supply: Uint256::zero(),
         prev_exchange_rate: Decimal256::one(),
     };

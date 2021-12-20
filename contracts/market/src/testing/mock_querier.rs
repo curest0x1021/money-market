@@ -11,7 +11,7 @@ use cosmwasm_storage::to_length_prefixed;
 use std::collections::HashMap;
 
 use cw20::TokenInfoResponse;
-use moneymarket::distribution_model::AncEmissionRateResponse;
+use moneymarket::distribution_model::ApEmissionRateResponse;
 use moneymarket::interest_model::BorrowRateResponse;
 use moneymarket::overseer::{BorrowLimitResponse, ConfigResponse};
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute};
@@ -249,7 +249,7 @@ impl WasmMockQuerier {
                         threshold_deposit_rate: _,
                         current_emission_rate: _,
                     } => SystemResult::Ok(ContractResult::from(to_binary(
-                        &AncEmissionRateResponse {
+                        &ApEmissionRateResponse {
                             emission_rate: Decimal256::from_uint256(5u64),
                         },
                     ))),

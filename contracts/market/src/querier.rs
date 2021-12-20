@@ -1,7 +1,7 @@
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{to_binary, Addr, Deps, QueryRequest, StdResult, WasmQuery};
 
-use moneymarket::distribution_model::{AncEmissionRateResponse, QueryMsg as DistributionQueryMsg};
+use moneymarket::distribution_model::{ApEmissionRateResponse, QueryMsg as DistributionQueryMsg};
 use moneymarket::interest_model::{BorrowRateResponse, QueryMsg as InterestQueryMsg};
 use moneymarket::overseer::{BorrowLimitResponse, ConfigResponse, QueryMsg as OverseerQueryMsg};
 
@@ -43,18 +43,18 @@ pub fn query_borrow_limit(
     Ok(borrow_limit)
 }
 
-pub fn query_anc_emission_rate(
+pub fn query_ap_emission_rate(
     deps: Deps,
     distribution_model: Addr,
     deposit_rate: Decimal256,
     target_deposit_rate: Decimal256,
     threshold_deposit_rate: Decimal256,
     current_emission_rate: Decimal256,
-) -> StdResult<AncEmissionRateResponse> {
-    let anc_emission_rate: AncEmissionRateResponse =
+) -> StdResult<ApEmissionRateResponse> {
+    let ap_emission_rate: ApEmissionRateResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: distribution_model.to_string(),
-            msg: to_binary(&DistributionQueryMsg::AncEmissionRate {
+            msg: to_binary(&DistributionQueryMsg::ApEmissionRate {
                 deposit_rate,
                 target_deposit_rate,
                 threshold_deposit_rate,
@@ -62,7 +62,7 @@ pub fn query_anc_emission_rate(
             })?,
         }))?;
 
-    Ok(anc_emission_rate)
+    Ok(ap_emission_rate)
 }
 
 pub fn query_target_deposit_rate(deps: Deps, overseer_contract: Addr) -> StdResult<Decimal256> {

@@ -8,7 +8,7 @@ use crate::state::{read_config, store_config, Config};
 use cosmwasm_bignumber::Decimal256;
 use moneymarket::common::optional_addr_validate;
 use moneymarket::distribution_model::{
-    AncEmissionRateResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    ApEmissionRateResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -103,12 +103,12 @@ pub fn update_config(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::AncEmissionRate {
+        QueryMsg::ApEmissionRate {
             deposit_rate,
             target_deposit_rate,
             threshold_deposit_rate,
             current_emission_rate,
-        } => to_binary(&query_anc_emission_rate(
+        } => to_binary(&query_ap_emission_rate(
             deps,
             deposit_rate,
             target_deposit_rate,
@@ -131,13 +131,13 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     Ok(resp)
 }
 
-fn query_anc_emission_rate(
+fn query_ap_emission_rate(
     deps: Deps,
     deposit_rate: Decimal256,
     target_deposit_rate: Decimal256,
     threshold_deposit_rate: Decimal256,
     current_emission_rate: Decimal256,
-) -> StdResult<AncEmissionRateResponse> {
+) -> StdResult<ApEmissionRateResponse> {
     let config: Config = read_config(deps.storage)?;
 
     let half_dec = Decimal256::one() + Decimal256::one();
@@ -161,5 +161,5 @@ fn query_anc_emission_rate(
         emission_rate
     };
 
-    Ok(AncEmissionRateResponse { emission_rate })
+    Ok(ApEmissionRateResponse { emission_rate })
 }

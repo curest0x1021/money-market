@@ -7,7 +7,7 @@ use crate::borrow::{
 };
 use crate::deposit::{compute_exchange_rate_raw, deposit_stable, redeem_stable};
 use crate::error::ContractError;
-use crate::querier::{query_anc_emission_rate, query_borrow_rate, query_target_deposit_rate};
+use crate::querier::{query_ap_emission_rate, query_borrow_rate, query_target_deposit_rate};
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{read_config, read_state, store_config, store_state, Config, State};
 
@@ -76,7 +76,7 @@ pub fn instantiate(
             last_reward_updated: env.block.height,
             global_interest_index: Decimal256::one(),
             global_reward_index: Decimal256::zero(),
-            anc_emission_rate: msg.anc_emission_rate,
+            ap_emission_rate: msg.ap_emission_rate,
             prev_aterra_supply: Uint256::zero(),
             prev_exchange_rate: Decimal256::one(),
         },
@@ -342,7 +342,7 @@ pub fn execute_epoch_operations(
 
     let mut state: State = read_state(deps.storage)?;
 
-    // Compute interest and reward before updating anc_emission_rate
+    // Compute interest and reward before updating ap_emission_rate
     let aterra_supply = query_supply(deps.as_ref(), config.aterra_contract)?;
     let balance: Uint256 = query_balance(
         deps.as_ref(),
@@ -394,14 +394,14 @@ pub fn execute_epoch_operations(
         vec![]
     };
 
-    // Query updated anc_emission_rate
-    state.anc_emission_rate = query_anc_emission_rate(
+    // Query updated ap_emission_rate
+    state.ap_emission_rate = query_ap_emission_rate(
         deps.as_ref(),
         config.distribution_model,
         deposit_rate,
         target_deposit_rate,
         threshold_deposit_rate,
-        state.anc_emission_rate,
+        state.ap_emission_rate,
     )?
     .emission_rate;
 
@@ -410,7 +410,7 @@ pub fn execute_epoch_operations(
     Ok(Response::new().add_messages(messages).add_attributes(vec![
         attr("action", "execute_epoch_operations"),
         attr("total_reserves", total_reserves),
-        attr("anc_emission_rate", state.anc_emission_rate.to_string()),
+        attr("ap_emission_rate", state.ap_emission_rate.to_string()),
     ]))
 }
 
@@ -495,7 +495,7 @@ pub fn query_state(deps: Deps, env: Env, block_height: Option<u64>) -> StdResult
         last_reward_updated: state.last_reward_updated,
         global_interest_index: state.global_interest_index,
         global_reward_index: state.global_reward_index,
-        anc_emission_rate: state.anc_emission_rate,
+        ap_emission_rate: state.ap_emission_rate,
         prev_aterra_supply: state.prev_aterra_supply,
         prev_exchange_rate: state.prev_exchange_rate,
     })

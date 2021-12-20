@@ -34,7 +34,7 @@ pub struct State {
     pub last_reward_updated: u64,
     pub global_interest_index: Decimal256,
     pub global_reward_index: Decimal256,
-    pub anc_emission_rate: Decimal256,
+    pub ap_emission_rate: Decimal256,
     pub prev_aterra_supply: Uint256,
     pub prev_exchange_rate: Decimal256,
 }

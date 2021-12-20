@@ -11,10 +11,10 @@ pub struct InstantiateMsg {
     pub owner_addr: String,
     /// stable coin denom used to borrow & repay
     pub stable_denom: String,
-    /// Anchor token code ID used to instantiate
+    /// AngelProtocol token code ID used to instantiate
     pub aterra_code_id: u64,
-    /// Anchor token distribution speed
-    pub anc_emission_rate: Decimal256,
+    /// AngelProtocol token distribution speed
+    pub ap_emission_rate: Decimal256,
     /// Maximum allowed borrow rate over deposited stable balance
     pub max_borrow_factor: Decimal256,
 }
@@ -31,14 +31,14 @@ pub enum ExecuteMsg {
     RegisterContracts {
         overseer_contract: String,
         /// The contract has the logics for
-        /// Anchor borrow interest rate
+        /// AngelProtocol borrow interest rate
         interest_model: String,
         /// The contract has the logics for
-        /// ANC distribution speed
+        /// AngelProtocol distribution speed
         distribution_model: String,
         /// Collector contract to send all the reserve
         collector_contract: String,
-        /// Faucet contract to drip ANC token to users
+        /// Faucet contract to drip AngelProtocol token to users
         distributor_contract: String,
     },
 
@@ -61,7 +61,7 @@ pub enum ExecuteMsg {
 
     /// Execute epoch operations
     /// 1. send reserve to collector contract
-    /// 2. update anc_emission_rate state
+    /// 2. update ap_emission_rate state
     ExecuteEpochOperations {
         deposit_rate: Decimal256,
         target_deposit_rate: Decimal256,
@@ -84,7 +84,7 @@ pub enum ExecuteMsg {
     /// Repay stable asset to decrease liability
     RepayStable {},
 
-    /// Claim distributed ANC rewards
+    /// Claim distributed AngelProtocol rewards
     ClaimRewards {
         to: Option<String>,
     },
@@ -142,7 +142,7 @@ pub struct StateResponse {
     pub last_reward_updated: u64,
     pub global_interest_index: Decimal256,
     pub global_reward_index: Decimal256,
-    pub anc_emission_rate: Decimal256,
+    pub ap_emission_rate: Decimal256,
     pub prev_aterra_supply: Uint256,
     pub prev_exchange_rate: Decimal256,
 }

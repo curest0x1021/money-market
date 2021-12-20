@@ -342,7 +342,7 @@ pub fn compute_reward(state: &mut State, block_height: u64) {
     }
 
     let passed_blocks = Decimal256::from_uint256(block_height - state.last_reward_updated);
-    let reward_accrued = passed_blocks * state.anc_emission_rate;
+    let reward_accrued = passed_blocks * state.ap_emission_rate;
     let borrow_amount = state.total_liabilities / state.global_interest_index;
 
     if !reward_accrued.is_zero() && !borrow_amount.is_zero() {
